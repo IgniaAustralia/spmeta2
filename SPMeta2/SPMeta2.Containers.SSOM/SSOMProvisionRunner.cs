@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.IO.MemoryMappedFiles;
+using System.Linq;
+using System.Reflection;
 using Microsoft.Office.SecureStoreService.Server;
 using Microsoft.Office.Server.Audience;
 using Microsoft.Office.Server.Search.Portability;
@@ -10,6 +14,7 @@ using Microsoft.SharePoint.Publishing.Navigation;
 using Microsoft.SharePoint.Taxonomy;
 using Microsoft.SharePoint.WebPartPages;
 using Microsoft.SharePoint.WorkflowServices;
+using SPMeta2.Attributes.Regression;
 using SPMeta2.Containers.Consts;
 using SPMeta2.Containers.Services;
 using SPMeta2.Containers.Utils;
@@ -23,6 +28,11 @@ using SPMeta2.SSOM.Services;
 using SPMeta2.SSOM.Standard.ModelHandlers.Webparts;
 using SPMeta2.Utils;
 using SPMeta2.Services.Impl;
+using SPMeta2.Services.Impl.Validation;
+using SPMeta2.SSOM.Standard.Services;
+using SPMeta2.ModelHosts;
+using SPMeta2.Exceptions;
+using SPMeta2.Services;
 
 namespace SPMeta2.Containers.SSOM
 {
@@ -32,6 +42,11 @@ namespace SPMeta2.Containers.SSOM
 
         public SSOMProvisionRunner()
         {
+            if (!Environment.Is64BitProcess)
+            {
+                throw new SPMeta2Exception("Environment.Is64BitProcess is false. SSOMProvisionRunner runs SSOM based stuff requiring x64 running process. If you run unit tests from Visual Studio, ensure 'Test -> Test Setting -> Default Processor Architecture -> x64'");
+            }
+
             Name = "SSOM";
 
             WebApplicationUrls = new List<string>();
@@ -40,11 +55,15 @@ namespace SPMeta2.Containers.SSOM
 
             LoadEnvironmentConfig();
             InitServices();
+
+            EnableParallelMode = false;
         }
+
+        public bool EnableParallelMode { get; set; }
 
         private void InitServices()
         {
-            _provisionService = new SSOMProvisionService();
+            _provisionService = new StandardSSOMProvisionService();
             _validationService = new SSOMValidationService();
 
             // TODO, setup a high level validation registration
@@ -59,6 +78,43 @@ namespace SPMeta2.Containers.SSOM
 
             foreach (var handlerType in ReflectionUtils.GetTypesFromAssembly<ModelHandlerBase>(ssomStandartValidationAsm))
                 _validationService.RegisterModelHandler(Activator.CreateInstance(handlerType) as ModelHandlerBase);
+
+            _provisionService.OnModelNodeProcessing += (sender, args) =>
+            {
+                ContainerTraceUtils.WriteLine(
+                    string.Format("Processing: [{0}/{1}] - [{2:0} %] - [{3}] [{4}]",
+                    new object[] {
+                                  args.ProcessedModelNodeCount,
+                                  args.TotalModelNodeCount,
+                                  100d * (double)args.ProcessedModelNodeCount / (double)args.TotalModelNodeCount,
+                                  args.CurrentNode.Value.GetType().Name,
+                                  args.CurrentNode.Value
+                                  }));
+            };
+
+            _provisionService.OnModelNodeProcessed += (sender, args) =>
+            {
+                ContainerTraceUtils.WriteLine(
+                   string.Format("Processed: [{0}/{1}] - [{2:0} %] - [{3}] [{4}]",
+                   new object[] {
+                                  args.ProcessedModelNodeCount,
+                                  args.TotalModelNodeCount,
+                                  100d * (double)args.ProcessedModelNodeCount / (double)args.TotalModelNodeCount,
+                                  args.CurrentNode.Value.GetType().Name,
+                                  args.CurrentNode.Value
+                                  }));
+            };
+
+            foreach (var modelHandler in _provisionService.ModelHandlers.Values)
+            {
+                var isQA = modelHandler.GetType()
+                    .GetProperty("IsQARun", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                if (isQA != null)
+                {
+                    isQA.SetValue(modelHandler, true); ;
+                }
+            }
         }
 
         private void LoadEnvironmentConfig()
@@ -76,6 +132,11 @@ namespace SPMeta2.Containers.SSOM
         #endregion
 
         #region properties
+
+        public override ProvisionServiceBase ProvisionService
+        {
+            get { return _provisionService; }
+        }
 
         public List<string> WebApplicationUrls { get; set; }
         public List<string> SiteUrls { get; set; }
@@ -123,9 +184,12 @@ namespace SPMeta2.Containers.SSOM
 
         public override void DeployWebApplicationModel(ModelNode model)
         {
+            if (!WebApplicationUrls.Any())
+                throw new SPMeta2Exception("WebApplicationUrls is empty");
+
             foreach (var webAppUrl in WebApplicationUrls)
             {
-                Trace.WriteLine(string.Format("[INF]    Running on web app: [{0}]", webAppUrl));
+                ContainerTraceUtils.WriteLine(string.Format("[INF]    Running on web app: [{0}]", webAppUrl));
 
                 for (var provisionGeneration = 0; provisionGeneration < ProvisionGenerationCount; provisionGeneration++)
                 {
@@ -142,11 +206,148 @@ namespace SPMeta2.Containers.SSOM
             }
         }
 
+        protected string GetScopeHash()
+        {
+            var frames = new StackTrace().GetFrames();
+
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+
+                var methodClass = method.DeclaringType.AssemblyQualifiedName;
+                var methodName = method.Name;
+
+                var siteIsolation = frame.GetMethod().GetCustomAttributes(true)
+                    .ToList()
+                    .FirstOrDefault(a => a is SiteCollectionIsolationAttribute);
+
+                if (siteIsolation != null)
+                {
+                    return string.Format("{0}{1}", methodName, methodClass);
+                }
+            }
+
+            return string.Empty;
+        }
+
+
+        protected string GetTargetSiteCollectionUrl()
+        {
+            if (!EnableParallelMode)
+            {
+                return SiteUrls.First();
+            }
+
+            var scopeHash = GetScopeHash();
+
+            if (string.IsNullOrEmpty(scopeHash))
+            {
+                return SiteUrls.First();
+            }
+
+            var mappings = RestoreMappings();
+            var currentMapping = mappings.FirstOrDefault(m => m.Contains(scopeHash));
+
+            if (currentMapping == null)
+            {
+                var lastMappingIndex = GetLastIndex();
+
+                if (lastMappingIndex == 9)
+                {
+                    lastMappingIndex = 0;
+                }
+                else
+                {
+                    lastMappingIndex++;
+                }
+
+                SaveLastIndex(lastMappingIndex);
+
+
+                var url = string.Format("http://DEV42:31416/sites/r-{0}", lastMappingIndex);
+                var fullMapping = string.Format("{0}|{1}", scopeHash, url);
+
+                mappings.Add(fullMapping);
+
+                SaveMappings(mappings);
+                mappings = RestoreMappings();
+
+                currentMapping = mappings.FirstOrDefault(m => m.Contains(scopeHash));
+            }
+
+
+            return currentMapping.Split(new string[] { "|" }, StringSplitOptions.None)[1];
+
+        }
+
+        private void SaveLastIndex(int lastMappingIndex)
+        {
+
+            File.WriteAllText("regresion-mapping-index.txt", lastMappingIndex.ToString());
+        }
+
+        private long fSize = 1024 * 1024 * 10;
+
+
+        private int GetLastIndex()
+        {
+            var result = 0;
+
+
+            if (File.Exists("regresion-mapping-index.txt"))
+            {
+                var value = File.ReadAllText("regresion-mapping-index.txt").Trim();
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    result = int.Parse(value);
+                }
+            }
+
+
+
+            return result;
+        }
+
+        private void SaveMappings(List<string> mappings)
+        {
+            var value = XmlSerializerUtils.SerializeToString(mappings);
+
+            File.WriteAllText("regresion-mapping.txt", value);
+
+        }
+
+        private List<string> RestoreMappings()
+        {
+            var fileName = "regresion-mapping.txt";
+
+            var result = new List<string>();
+            if (File.Exists(fileName))
+            {
+                var value = File.ReadAllText(fileName).Trim();
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    result = XmlSerializerUtils.DeserializeFromString<List<string>>(value);
+                }
+            }
+
+            return result;
+        }
+
+
         public override void DeploySiteModel(ModelNode model)
         {
+            var scope = GetScopeHash();
+
+            if (!SiteUrls.Any())
+                throw new SPMeta2Exception("SiteUrls is empty");
+
             foreach (var siteUrl in SiteUrls)
             {
-                Trace.WriteLine(string.Format("[INF]    Running on site: [{0}]", siteUrl));
+                //var siteUrl = GetTargetSiteCollectionUrl();
+
+                ContainerTraceUtils.WriteLine(string.Format("[INF]    Running on site: [{0}]", siteUrl));
 
                 for (var provisionGeneration = 0; provisionGeneration < ProvisionGenerationCount; provisionGeneration++)
                 {
@@ -164,9 +365,15 @@ namespace SPMeta2.Containers.SSOM
 
         public override void DeployWebModel(ModelNode model)
         {
+            if (!WebUrls.Any())
+                throw new SPMeta2Exception("WebUrls is empty");
+
             foreach (var webUrl in WebUrls)
             {
-                Trace.WriteLine(string.Format("[INF]    Running on web: [{0}]", webUrl));
+                //var webUrl = GetTargetSiteCollectionUrl();
+
+
+                ContainerTraceUtils.WriteLine(string.Format("[INF]    Running on web: [{0}]", webUrl));
 
                 for (var provisionGeneration = 0; provisionGeneration < ProvisionGenerationCount; provisionGeneration++)
                 {
@@ -182,21 +389,42 @@ namespace SPMeta2.Containers.SSOM
             }
         }
 
+
+
         public override void DeployListModel(ModelNode model)
         {
             foreach (var webUrl in WebUrls)
             {
-                Trace.WriteLine(string.Format("[INF]    Running on web: [{0}]", webUrl));
+                ContainerTraceUtils.WriteLine(string.Format("[INF]    Running on web: [{0}]", webUrl));
 
                 for (var provisionGeneration = 0; provisionGeneration < ProvisionGenerationCount; provisionGeneration++)
                 {
                     WithSSOMSiteAndWebContext(webUrl, (site, web) =>
                     {
+                        var list = web.Lists.TryGetList("Site Pages");
+
+                        if (list == null)
+                        {
+                            list = web.Lists.TryGetList("Pages");
+                        }
+
+                        if (list == null)
+                        {
+                            throw new SPMeta2Exception("Cannot find host list");
+                        }
+
                         if (EnableDefinitionProvision)
-                            _provisionService.DeployModel(WebModelHost.FromWeb(web), model);
+                            _provisionService.DeployListModel(list, model);
 
                         if (EnableDefinitionValidation)
-                            _validationService.DeployModel(WebModelHost.FromWeb(web), model);
+                        {
+                            var listHost = ModelHostBase.Inherit<ListModelHost>(WebModelHost.FromWeb(list.ParentWeb), h =>
+                            {
+                                h.HostList = list;
+                            });
+
+                            _validationService.DeployModel(listHost, model);
+                        }
                     });
                 }
             }
@@ -206,21 +434,28 @@ namespace SPMeta2.Containers.SSOM
 
         #region utils
 
-        private void WithSSOMWebApplicationContext(string webAppUrl, Action<SPWebApplication> action)
+        public void WithSSOMWebApplicationContext(string webAppUrl, Action<SPWebApplication> action)
         {
             var webApp = SPWebApplication.Lookup(new Uri(webAppUrl));
 
             action(webApp);
         }
 
-        private void WithSSOMFarmContext(Action<SPFarm> action)
+        public void WithSSOMFarmContext(Action<SPFarm> action)
         {
             var farm = SPFarm.Local;
 
             action(farm);
         }
 
-        private void WithSSOMSiteAndWebContext(string siteUrl, Action<SPSite, SPWeb> action)
+        public void WithSSOMSiteAndWebContext(Action<SPSite, SPWeb> action)
+        {
+            var siteUrl = this.SiteUrls.First();
+
+            WithSSOMSiteAndWebContext(siteUrl, action);
+        }
+
+        public void WithSSOMSiteAndWebContext(string siteUrl, Action<SPSite, SPWeb> action)
         {
             using (var site = new SPSite(siteUrl))
             {

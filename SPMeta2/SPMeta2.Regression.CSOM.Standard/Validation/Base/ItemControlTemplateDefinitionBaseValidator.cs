@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.SharePoint.Client;
 using SPMeta2.Containers.Assertion;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.CSOM.Standard.ModelHandlers.Base;
 using SPMeta2.Definitions;
@@ -21,7 +23,7 @@ namespace SPMeta2.Regression.CSOM.Standard.Validation.Base
 
             var folderModelHost = modelHost.WithAssertAndCast<FolderModelHost>("modelHost", value => value.RequireNotNull());
 
-            var folder = folderModelHost.CurrentLibraryFolder;
+            var folder = folderModelHost.CurrentListFolder;
             var definition = model.WithAssertAndCast<ItemControlTemplateDefinitionBase>("model", value => value.RequireNotNull());
 
             var spFile = GetItemFile(folderModelHost.CurrentList, folder, definition.FileName);
@@ -31,7 +33,7 @@ namespace SPMeta2.Regression.CSOM.Standard.Validation.Base
 
             context.Load(spObject);
             context.Load(spFile, f => f.ServerRelativeUrl);
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
 
             var assert = ServiceFactory.AssertService
                 .NewAssert(definition, spObject)
@@ -100,17 +102,14 @@ namespace SPMeta2.Regression.CSOM.Standard.Validation.Base
                     var srcProp = s.GetExpressionValue(m => m.TargetControlTypes);
                     var isValid = true;
 
-                    //var targetControlTypeValue = new FieldMultiChoiceValue(d["TargetControlType"].ToString());
-                    //var targetControlTypeValues = new List<string>();
+                    var targetControlTypeValues = (d["TargetControlType"] as string[])
+                                     .Select(v => v.ToUpper()).ToList();
 
-                    //for (var i = 0; i < targetControlTypeValue.Count; i++)
-                    //    targetControlTypeValues.Add(targetControlTypeValue[i].ToUpper());
-
-                    //foreach (var v in s.TargetControlTypes)
-                    //{
-                    //    if (!targetControlTypeValues.Contains(v.ToUpper()))
-                    //        isValid = false;
-                    //}
+                    foreach (var v in s.TargetControlTypes)
+                    {
+                        if (!targetControlTypeValues.Contains(v.ToUpper()))
+                            isValid = false;
+                    }
 
                     return new PropertyValidationResult
                     {
@@ -151,7 +150,11 @@ namespace SPMeta2.Regression.CSOM.Standard.Validation.Base
             return null;
         }
 
-
+        // 
+        public static string GetCompatibleManagedProperties(this ListItem item)
+        {
+            return item["CompatibleManagedProperties"] as string;
+        }
 
         public static string GetManagedPropertyMapping(this ListItem item)
         {

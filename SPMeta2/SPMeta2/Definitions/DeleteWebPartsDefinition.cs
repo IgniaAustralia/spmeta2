@@ -1,24 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Text;
-
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
+using SPMeta2.Utils;
 
 namespace SPMeta2.Definitions
 {
     [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPFile", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.File", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.File", "Microsoft.SharePoint.Client")]
 
     [DefaultRootHost(typeof(WebDefinition))]
-    [DefaultParentHostAttribute(typeof(WebPartPageDefinition))]
+    [DefaultParentHost(typeof(WebPartPageDefinition))]
 
     [Serializable]
     [DataContract]
     [SingletonIdentity]
+
+    [ParentHostCapability(typeof(WebPartPageDefinition))]
+    [ParentHostCapability(typeof(WikiPageDefinition))]
+
+    [ExpectManyInstances]
     public class DeleteWebPartsDefinition : DefinitionBase
     {
         #region constructors
@@ -40,15 +44,18 @@ namespace SPMeta2.Definitions
 
         #region methods
 
+        // ReSharper disable once RedundantOverridenMember
         public override string ToString()
         {
-            return base.ToString();
+            return new ToStringResult<DeleteWebPartsDefinition>(this)
+                         .ToString();
         }
 
         #endregion
     }
 
     [DataContract]
+    [Serializable]
     public class WebPartMatch
     {
         #region properties

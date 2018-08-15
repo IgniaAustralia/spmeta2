@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 
 namespace SPMeta2.Enumerations
 {
@@ -383,6 +379,44 @@ namespace SPMeta2.Enumerations
             Description = "Gallery for storing No Code Public Workflows",
             FeatureId = new Guid("00bfea71-f600-43f6-a895-40c0de7b0117"),
             Hidden = true
+        };
+
+
+        /// <summary>
+        /// Corresponds to built-in list template with Name [Posts], InternamName [posts], Description [Use the Posts list for posts in this blog.] and FeatureId: [faf00902-6bab-4583-bd02-84db191801d8]'
+        /// </summary>
+        public static ListTemplate Posts = new ListTemplate
+        {
+            Name = "Posts",
+            InternalName = "posts",
+            Description = "Use the Posts list for posts in this blog.",
+            FeatureId = new Guid("faf00902-6bab-4583-bd02-84db191801d8"),
+            Hidden = false
+        };
+
+
+        /// <summary>
+        /// Corresponds to built-in list template with Name [Comments], InternamName [comments], Description [The Comments list stores comments that have been made on posts.] and FeatureId: [faf00902-6bab-4583-bd02-84db191801d8]'
+        /// </summary>
+        public static ListTemplate Comments = new ListTemplate
+        {
+            Name = "Comments",
+            InternalName = "comments",
+            Description = "The Comments list stores comments that have been made on posts.",
+            FeatureId = new Guid("faf00902-6bab-4583-bd02-84db191801d8"),
+            Hidden = false
+        };
+
+        /// <summary>
+        /// Corresponds to built-in list template with Name [posts], InternamName [categories], Description [Use the Categories list to define the categories available for posts.] and FeatureId: [faf00902-6bab-4583-bd02-84db191801d8]'
+        /// </summary>
+        public static ListTemplate Categories = new ListTemplate
+        {
+            Name = "Categories",
+            InternalName = "categories",
+            Description = "Use the Categories list to define the categories available for posts.",
+            FeatureId = new Guid("faf00902-6bab-4583-bd02-84db191801d8"),
+            Hidden = false
         };
 
 

@@ -6,8 +6,13 @@
 
         public const string O365_SiteUrls = "SPMeta2_O365_SiteUrls";
         public const string O365_WebUrls = "SPMeta2_O365_WebUrls";
+        public const string O365_RandomBalancedUrls = "SPMeta2_O365_RandomBalancedUrls";
+
         public const string O365_UserName = "SPMeta2_O365_UserName";
         public const string O365_Password = "SPMeta2_O365_Password";
+
+        public const string O365_DefaultTestUserLogins = "SPMeta2_O365_DefaultTestUserLogins";
+
 
         public const string SSOM_WebApplicationUrls = "SPMeta2_SSOM_WebApplicationUrls";
         public const string SSOM_SiteUrls = "SPMeta2_SSOM_SiteUrls";
@@ -19,6 +24,7 @@
         public const string CSOM_Password = "SPMeta2_CSOM_Password";
 
         public const string RunnerLibraries = "SPMeta2_RunnerLibraries";
+        public const string RunnerProvisionMode = "SPMeta2_RunnerProvisionMode";
 
         public const string DefaultTaxonomyStoreName = "SPMeta2_DefaultTaxonomyStoreName";
         public const string DefaultTaxonomyStoreId = "SPMeta2_DefaultTaxonomyStoreId";
@@ -26,6 +32,8 @@
         public const string DefaultSqlServerName = "SPMeta2_DefaultSqlServerName";
 
         public const string DefaultTestUserLogins = "SPMeta2_DefaultTestUserLogins";
+        public const string DefaultTestDomainUserEmails = "SPMeta2_DefaultTestDomainUserEmails";
+
         public const string DefaultTestADGroups = "SPMeta2_DefaultTestADGroups";
 
         #endregion

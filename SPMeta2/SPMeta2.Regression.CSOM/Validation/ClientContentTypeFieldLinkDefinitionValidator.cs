@@ -4,40 +4,37 @@ using SPMeta2.CSOM.Common;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.Definitions;
 using SPMeta2.Utils;
+using SPMeta2.CSOM.ModelHosts;
 
 namespace SPMeta2.Regression.CSOM.Validation
 {
     public class ClientContentTypeFieldLinkDefinitionValidator : ContentTypeFieldLinkModelHandler
     {
-        protected FieldLink FindFieldLinkById(FieldLinkCollection fiedLinks, Guid fieldId)
-        {
-            foreach (var fieldLink in fiedLinks)
-            {
-                if (fieldLink.Id == fieldId)
-                    return fieldLink;
-            }
-
-            return null;
-        }
-
         public override void DeployModel(object modelHost, DefinitionBase model)
         {
-            var modelHostContext = modelHost.WithAssertAndCast<ModelHostContext>("modelHost", value => value.RequireNotNull());
+            var modelHostContext = modelHost.WithAssertAndCast<ContentTypeModelHost>("modelHost", value => value.RequireNotNull());
             var definition = model.WithAssertAndCast<ContentTypeFieldLinkDefinition>("model", value => value.RequireNotNull());
 
-            var site = modelHostContext.Site;
-            var contentType = modelHostContext.ContentType;
+            var site = modelHostContext.HostSite;
+            var contentType = modelHostContext.HostContentType;
 
             var context = site.Context;
 
-            var spObject = contentType.FieldLinks.GetById(definition.FieldId);
-            context.Load(spObject);
-            context.ExecuteQuery();
+            var spObject = FindExistingFieldLink(contentType, definition);
 
             var assert = ServiceFactory.AssertService
-                                       .NewAssert(definition, spObject)
-                                             .ShouldNotBeNull(spObject)
-                                             .ShouldBeEqual(m => m.FieldId, o => o.Id);
+                .NewAssert(definition, spObject)
+                .ShouldNotBeNull(spObject);
+
+            if (!string.IsNullOrEmpty(definition.FieldInternalName))
+                assert.ShouldBeEqual(m => m.FieldInternalName, o => o.Name);
+            else
+                assert.SkipProperty(m => m.FieldInternalName, "FieldInternalName is NULL or empty. Skipping.");
+
+            if (definition.FieldId.HasGuidValue())
+                assert.ShouldBeEqual(m => m.FieldId, o => o.Id);
+            else
+                assert.SkipProperty(m => m.FieldId, "FieldId is NULL. Skipping.");
 
             if (!string.IsNullOrEmpty(definition.DisplayName))
             {

@@ -1,9 +1,10 @@
-﻿using SPMeta2.Attributes;
+﻿using System;
+using System.Runtime.Serialization;
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using SPMeta2.Definitions.Base;
-using System.Runtime.Serialization;
+using SPMeta2.Utils;
 
 namespace SPMeta2.Definitions
 {
@@ -11,16 +12,19 @@ namespace SPMeta2.Definitions
     /// Allows to define SharePoint root web. Used to built up side model with root web provision included.
     /// </summary>
     /// 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPWeb", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Web", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPWeb", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Web", "Microsoft.SharePoint.Client")]
 
-    [DefaultParentHostAttribute(typeof(SiteDefinition))]
-    [DefaultRootHostAttribute(typeof(SiteDefinition))]
+    [DefaultParentHost(typeof(SiteDefinition))]
+    [DefaultRootHost(typeof(SiteDefinition))]
 
     [Serializable]
     [DataContract]
     [ExpectAddHostExtensionMethod]
     [ExpectWithExtensionMethod]
+
+    [ParentHostCapability(typeof(SiteDefinition))]
+    [ParentHostCapability(typeof(WebDefinition))]
     public class RootWebDefinition : DefinitionBase
     {
         #region properties
@@ -44,7 +48,8 @@ namespace SPMeta2.Definitions
 
         public override string ToString()
         {
-            return string.Format("RootWeb Definition has not properties.");
+            return new ToStringResult<RootWebDefinition>(this)
+                         .ToString();
         }
 
         #endregion

@@ -12,12 +12,24 @@ using SPMeta2.Utils;
 using SPMeta2.SSOM.ModelHosts;
 using SPMeta2.Exceptions;
 using System.Web.UI.WebControls.WebParts;
+using SPMeta2.SSOM.Services;
 
 namespace SPMeta2.SSOM.ModelHandlers
 {
     public class ModuleFileModelHandler : SSOMModelHandlerBase
     {
+        #region static
+
+        static ModuleFileModelHandler()
+        {
+            MaxMinorVersionCount = 50;
+        }
+
+        #endregion
+
         #region properties
+
+        private static int MaxMinorVersionCount { get; set; }
 
         public override Type TargetType
         {
@@ -43,8 +55,14 @@ namespace SPMeta2.SSOM.ModelHandlers
 
         }
 
-        public override void WithResolvingModelHost(object modelHost, DefinitionBase model, Type childModelType, Action<object> action)
+        public override void WithResolvingModelHost(ModelHostResolveContext modelHostContext)
         {
+            var modelHost = modelHostContext.ModelHost;
+            var model = modelHostContext.Model;
+            var childModelType = modelHostContext.ChildModelType;
+            var action = modelHostContext.Action;
+
+
             var folderHost = modelHost.WithAssertAndCast<FolderModelHost>("modelHost", value => value.RequireNotNull());
             var moduleFile = model.WithAssertAndCast<ModuleFileDefinition>("model", value => value.RequireNotNull());
 
@@ -141,12 +159,65 @@ namespace SPMeta2.SSOM.ModelHandlers
 
         private void ProcessWebModuleFile(FolderModelHost folderHost, ModuleFileDefinition moduleFile)
         {
-            throw new SPMeta2NotImplementedException("Module provision under web folders is not implemented yet.");
+            var folder = folderHost.CurrentWebFolder;
+
+            var currentFile = folder.ParentWeb.GetFile(GetSafeFileUrl(folder, moduleFile));
+
+            InvokeOnModelEvent(this, new ModelEventArgs
+            {
+                CurrentModelNode = null,
+                Model = null,
+                EventType = ModelEventType.OnProvisioning,
+                Object = currentFile.Exists ? currentFile : null,
+                ObjectType = typeof(SPFile),
+                ObjectDefinition = moduleFile,
+                ModelHost = folderHost
+            });
+
+            if (moduleFile.Overwrite)
+            {
+                var file = folder.Files.Add(moduleFile.FileName, moduleFile.Content, moduleFile.Overwrite);
+
+                InvokeOnModelEvent(this, new ModelEventArgs
+                {
+                    CurrentModelNode = null,
+                    Model = null,
+                    EventType = ModelEventType.OnProvisioned,
+                    Object = file,
+                    ObjectType = typeof(SPFile),
+                    ObjectDefinition = moduleFile,
+                    ModelHost = folderHost
+                });
+            }
+            else
+            {
+                InvokeOnModelEvent(this, new ModelEventArgs
+                {
+                    CurrentModelNode = null,
+                    Model = null,
+                    EventType = ModelEventType.OnProvisioned,
+                    Object = currentFile.Exists ? currentFile : null,
+                    ObjectType = typeof(SPFile),
+                    ObjectDefinition = moduleFile,
+                    ModelHost = folderHost
+                });
+            }
+
+            folder.Update();
         }
 
         private string GetSafeFileUrl(SPFolder folder, ModuleFileDefinition moduleFile)
         {
-            return folder.ServerRelativeUrl + "/" + moduleFile.FileName;
+            var result = moduleFile.FileName;
+
+            if (folder.ServerRelativeUrl != "/")
+            {
+                result = UrlUtility.CombineUrl(folder.ServerRelativeUrl, moduleFile.FileName);
+            }
+
+            result = result.Replace("//", "/");
+
+            return result;
         }
 
         public static void WithSafeFileOperation(
@@ -164,14 +235,35 @@ namespace SPMeta2.SSOM.ModelHandlers
             if (onBeforeAction != null)
                 onBeforeAction(file);
 
-            if (list != null && (file.Exists && file.CheckOutType != SPFile.SPCheckOutType.None))
-                file.UndoCheckOut();
+            // are we inside ocument libary, so that check in stuff is needed?
+            var isDocumentLibrary = list != null && list.BaseType == SPBaseType.DocumentLibrary;
 
-            if (list != null && (list.EnableMinorVersions && file.Exists && file.Level == SPFileLevel.Published))
-                file.UnPublish("Provision");
+            if (isDocumentLibrary)
+            {
+                if (list != null && (file.Exists && file.CheckOutType != SPFile.SPCheckOutType.None))
+                    file.UndoCheckOut();
 
-            if (list != null && (file.Exists && file.CheckOutType == SPFile.SPCheckOutType.None))
-                file.CheckOut();
+                if (list != null && (list.EnableMinorVersions && file.Exists && file.Level == SPFileLevel.Published))
+                {
+                    file.UnPublish("Provision");
+
+                    // Module file provision fails at minor version 511 #930
+                    // https://github.com/SubPointSolutions/spmeta2/issues/930
+
+                    // checking out .511 version will result in an exception
+                    // can be cause by multiple provisions of the same file (such as on dev/test environment)
+                    if (file.MinorVersion >= MaxMinorVersionCount)
+                    {
+                        file.Publish("Provision");
+
+                        if (list.EnableModeration)
+                            file.Approve("Provision");
+                    }
+                }
+
+                if (list != null && (file.Exists && file.CheckOutType == SPFile.SPCheckOutType.None))
+                    file.CheckOut();
+            }
 
             SPFile newFile;
 
@@ -185,15 +277,17 @@ namespace SPMeta2.SSOM.ModelHandlers
 
             newFile.Update();
 
-            if (list != null && (file.Exists && file.CheckOutType != SPFile.SPCheckOutType.None))
-                newFile.CheckIn("Provision");
+            if (isDocumentLibrary)
+            {
+                if (list != null && (file.Exists && file.CheckOutType != SPFile.SPCheckOutType.None))
+                    newFile.CheckIn("Provision");
 
-            if (list != null && (list.EnableMinorVersions))
-                newFile.Publish("Provision");
+                if (list != null && (list.EnableMinorVersions))
+                    newFile.Publish("Provision");
 
-            if (list != null && list.EnableModeration)
-                newFile.Approve("Provision");
-
+                if (list != null && list.EnableModeration)
+                    newFile.Approve("Provision");
+            }
         }
 
         public static void DeployModuleFile(SPFolder folder,
@@ -204,7 +298,14 @@ namespace SPMeta2.SSOM.ModelHandlers
             Action<SPFile> beforeProvision,
             Action<SPFile> afterProvision)
         {
-            var list = folder.DocumentLibrary;
+            // doc libs
+            SPList list = folder.DocumentLibrary;
+
+            // fallback for the lists assuming deployment to Forms or other places
+            if (list == null)
+            {
+                list = folder.ParentWeb.Lists[folder.ParentListId];
+            }
 
             WithSafeFileOperation(list, folder, fileUrl, fileName, fileContent,
                 overwrite,
@@ -247,23 +348,38 @@ namespace SPMeta2.SSOM.ModelHandlers
                 },
                 after =>
                 {
+                    var shouldUpdateItem = false;
+
+                    if (!string.IsNullOrEmpty(moduleFile.Title))
+                    {
+                        after.ListItemAllFields["Title"] = moduleFile.Title;
+                        shouldUpdateItem = true;
+                    }
+
                     if (!string.IsNullOrEmpty(moduleFile.ContentTypeId) ||
                         !string.IsNullOrEmpty(moduleFile.ContentTypeName))
                     {
                         var list = folder.ParentWeb.Lists[folder.ParentListId];
 
                         if (!string.IsNullOrEmpty(moduleFile.ContentTypeId))
-                            after.ListItemAllFields["ContentTypeId"] = LookupListContentTypeById(list, moduleFile.ContentTypeId);
+                            after.ListItemAllFields["ContentTypeId"] = ContentTypeLookupService.LookupListContentTypeById(list, moduleFile.ContentTypeId);
 
                         if (!string.IsNullOrEmpty(moduleFile.ContentTypeName))
-                            after.ListItemAllFields["ContentTypeId"] = LookupListContentTypeByName(list, moduleFile.ContentTypeName);
+                            after.ListItemAllFields["ContentTypeId"] = ContentTypeLookupService.LookupContentTypeByName(list, moduleFile.ContentTypeName);
 
-                        after.ListItemAllFields.Update();
+                        shouldUpdateItem = true;
                     }
 
                     if (moduleFile.DefaultValues.Count > 0)
                     {
-                        EnsureDefaultValues(after.ListItemAllFields, moduleFile);
+                        FieldLookupService.EnsureDefaultValues(after.ListItemAllFields, moduleFile.DefaultValues);
+                        shouldUpdateItem = true;
+                    }
+
+                    FieldLookupService.EnsureValues(after.ListItemAllFields, moduleFile.Values, true);
+
+                    if (shouldUpdateItem)
+                    {
                         after.ListItemAllFields.Update();
                     }
 
@@ -303,23 +419,9 @@ namespace SPMeta2.SSOM.ModelHandlers
             }
         }
 
-        protected SPContentTypeId LookupListContentTypeByName(SPList targetList, string name)
-        {
-            var targetContentType = targetList.ContentTypes
-                   .OfType<SPContentType>()
-                   .FirstOrDefault(ct => ct.Name.ToUpper() == name.ToUpper());
 
-            if (targetContentType == null)
-                throw new SPMeta2Exception(string.Format("Cannot find content type by name ['{0}'] in list: [{1}]",
-                    name, targetList.Title));
 
-            return targetContentType.Id;
-        }
 
-        protected SPContentTypeId LookupListContentTypeById(SPList targetList, string contentTypeId)
-        {
-            return targetList.ContentTypes.BestMatch(new SPContentTypeId(contentTypeId));
-        }
 
         #endregion
     }

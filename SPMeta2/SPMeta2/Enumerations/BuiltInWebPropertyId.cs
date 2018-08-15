@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-
-namespace SPMeta2.Enumerations
+﻿namespace SPMeta2.Enumerations
 {
     /// <summary>
     /// Out of the box SharePoint web property names
@@ -58,6 +52,10 @@ namespace SPMeta2.Enumerations
         /// </summary>
         public static string ImagesListId = "__ImagesListId";
 
+        /// <summary>
+        /// Refers to __DisplayShowHideRibbonActionId
+        /// </summary>
+        public static string DisplayShowHideRibbonActionId = "__DisplayShowHideRibbonActionId";
 
         /// <summary>
         /// Refers to FollowLinkEnabled
@@ -89,6 +87,8 @@ namespace SPMeta2.Enumerations
         /// Refers to allowrevertfromtemplate
         /// </summary>
         public static string AllowRevertFromTemplate = "allowrevertfromtemplate";
+
+        public static string ShowUrlStructure = "showurlstructure";
 
         #endregion
     }

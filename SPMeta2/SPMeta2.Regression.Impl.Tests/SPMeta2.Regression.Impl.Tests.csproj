@@ -34,6 +34,24 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI-O365|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\CI-O365\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI-CSOM2013|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\CI-CSOM2013\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.BusinessData, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -180,6 +198,7 @@
       <HintPath>..\SPMeta2.Dependencies\SharePoint\SP2013 - 15.0.4569.1000\SSOM\Microsoft.SharePoint.WorkManagement.Client.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -194,11 +213,25 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="ModelHandlers\Base\ModelHandlerTestBase.cs" />
-    <Compile Include="ModelHandlers\CSOMListItemFieldValueModelHandlerTests.cs" />
-    <Compile Include="ModelHandlers\CSOMSandboxSolutionModelHandlerTests.cs" />
-    <Compile Include="ProvisionServiceTests.cs" />
+    <Compile Include="Impl\Build\BuildBaselineTests.cs" />
+    <Compile Include="Impl\Consts\BuiltInFeatureEnumerationTests.cs" />
+    <Compile Include="Impl\ModelHandlers\Base\ModelHandlerTestBase.cs" />
+    <Compile Include="Impl\ModelHandlers\CSOMListItemFieldValueModelHandlerTests.cs" />
+    <Compile Include="Impl\ModelHandlers\CSOMSandboxSolutionModelHandlerTests.cs" />
+    <Compile Include="Impl\Services\Base\TokenReplacementServiceTestBase.cs" />
+    <Compile Include="Impl\Services\ClientRuntimeContextServiceBaseTests.cs" />
+    <Compile Include="Impl\Services\CSOM\RequireCSOMRuntimeVersionDeploymentServiceTests.cs" />
+    <Compile Include="Impl\Services\DefaultModelStatInfoServiceTests.cs" />
+    <Compile Include="Impl\Services\SharePointPersistenceStorageServiceTests.cs" />
+    <Compile Include="Impl\Services\TraceSourceServiceTests.cs" />
+    <Compile Include="Impl\Services\DefaultDiagnosticInfoServiceTests.cs" />
+    <Compile Include="Impl\LookupServices\SSOM\SSOMListViewLookupServiceTests.cs" />
+    <Compile Include="Impl\Services\ValidationServiceTests.cs" />
+    <Compile Include="Impl\Services\SSOM\SSOMTokenReplacementServiceTests.cs" />
+    <Compile Include="Impl\Services\CSOM\CSOMTokenReplacementServiceTests.cs" />
+    <Compile Include="Impl\Services\ProvisionServiceTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Impl\Scenarios\TaxonomyFieldScenariousTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SPMeta2.Containers.CSOM\SPMeta2.Containers.CSOM.csproj">
@@ -233,6 +266,14 @@
       <Project>{6F7EBF0C-7124-44D6-B9EC-302A54A19FE4}</Project>
       <Name>SPMeta2.CSOM</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SPMeta2.Regression.Tests\SPMeta2.Regression.Tests.csproj">
+      <Project>{2DA71A5B-C039-4A2E-9985-91D6501F293C}</Project>
+      <Name>SPMeta2.Regression.Tests</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SPMeta2.Regression\SPMeta2.Regression.csproj">
+      <Project>{0de538c9-1723-46b1-90f8-5dc67c56d7dd}</Project>
+      <Name>SPMeta2.Regression</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SPMeta2.SSOM.Standard\SPMeta2.SSOM.Standard.csproj">
       <Project>{7D095A0D-0BDE-446D-8093-13E5685F1D3C}</Project>
       <Name>SPMeta2.SSOM.Standard</Name>
@@ -245,14 +286,34 @@
       <Project>{F310878E-9B72-4C3C-AE5D-C60B3515E2FC}</Project>
       <Name>SPMeta2.Standard</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SPMeta2.Syntax.Default\SPMeta2.Syntax.Default.csproj">
-      <Project>{6f7e5d77-0a17-4409-be8c-94389d276fa9}</Project>
-      <Name>SPMeta2.Syntax.Default</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SPMeta2\SPMeta2.csproj">
       <Project>{EE49D3FD-6180-40E6-829F-6831FF89DAC6}</Project>
       <Name>SPMeta2</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Containers\Apps\1.0.0.0\SPMeta2.Containers.AppContainer.app">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\Apps\1.0.0.1\SPMeta2.Containers.AppContainer.app">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\Apps\1.0.0.2\SPMeta2.Containers.AppContainer.app">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\Apps\1.0.0.3\SPMeta2.Containers.AppContainer.app">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\Farm\SPMeta2.Containers.FarmSolutionContainer.wsp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\Sandbox\SPMeta2.Containers.SandboxSolutionContainer.wsp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Containers\WebTemplates\M2CustomTeamSite.wsp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
@@ -274,6 +335,11 @@
   </Choose>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties BuildVersion_StartDate="2000/1/1" />
+    </VisualStudio>
+  </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

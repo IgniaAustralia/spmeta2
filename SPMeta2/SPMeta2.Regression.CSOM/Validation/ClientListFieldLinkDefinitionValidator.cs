@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using Microsoft.SharePoint.Client;
 using SPMeta2.Containers.Assertion;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.Definitions;
@@ -19,29 +20,55 @@ namespace SPMeta2.Regression.CSOM.Validation
             var list = listModelHost.HostList;
             var context = list.Context;
 
-            var spObject = list.Fields.GetById(definition.FieldId);
-            context.Load(spObject);
-            context.ExecuteQuery();
+            var spObject = FindExistingListField(list, definition);
 
-            var assert = ServiceFactory.AssertService
-                                      .NewAssert(definition, spObject)
-                                            .ShouldNotBeNull(spObject)
-                                            .ShouldBeEqual(m => m.FieldId, o => o.Id);
+            context.Load(spObject);
+            context.ExecuteQueryWithTrace();
+
+            var assert = ServiceFactory.AssertService.NewAssert(definition, spObject);
+
+            assert
+                .ShouldNotBeNull(spObject)
+
+                .ShouldBeEqualIfNotNullOrEmpty(m => m.FieldInternalName, o => o.InternalName)
+
+                .ShouldBeEqualIfHasValue(m => m.FieldId, o => o.Id)
+                .ShouldBeEqualIfHasValue(m => m.Required, o => o.Required)
+                .ShouldBeEqualIfHasValue(m => m.Hidden, o => o.Hidden);
 
             if (!string.IsNullOrEmpty(definition.DisplayName))
                 assert.ShouldBeEqual(m => m.DisplayName, o => o.Title);
             else
-                assert.SkipProperty(m => m.DisplayName, "DisplayName is null or empty. Skipping");
+            {
 
-            if (definition.Required.HasValue)
-                assert.ShouldBeEqual(m => m.Required, o => o.Required);
-            else
-                assert.SkipProperty(m => m.Required, "Required is null or empty. Skipping");
+                var regDisplayTitleProp = definition.PropertyBag.FirstOrDefault(p => p.Name == "_Reg_DisplayName");
 
-            if (definition.Hidden.HasValue)
-                assert.ShouldBeEqual(m => m.Hidden, o => o.Hidden);
-            else
-                assert.SkipProperty(m => m.Hidden, "Hidden is null or empty. Skipping");
+                if (regDisplayTitleProp != null)
+                {
+                    // Enhance FieldDefinition with 'pushChangesToLists' option #922
+                    // https://github.com/SubPointSolutions/spmeta2/issues/922
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.DisplayName);
+                        var dstProp = d.GetExpressionValue(m => m.Title);
+
+                        var isValid = regDisplayTitleProp.Value == d.Title;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                {
+                    assert.SkipProperty(m => m.DisplayName, "DisplayName is null or empty. Skipping");
+                }
+            }
 
             if (definition.AddFieldOptions.HasFlag(BuiltInAddFieldOptions.DefaultValue))
             {
@@ -57,7 +84,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
                     var listContentTypes = list.ContentTypes;
                     context.Load(listContentTypes);
-                    context.ExecuteQuery();
+                    context.ExecuteQueryWithTrace();
 
                     foreach (ContentType ct in listContentTypes)
                     {
@@ -70,9 +97,9 @@ namespace SPMeta2.Regression.CSOM.Validation
 
                         context.Load(ct);
                         context.Load(ct, c => c.FieldLinks);
-                        context.ExecuteQuery();
+                        context.ExecuteQueryWithTrace();
 
-                        isValid = ct.FieldLinks.OfType<FieldLink>().Count(l => l.Id == s.FieldId) > 0;
+                        isValid = ct.FieldLinks.OfType<FieldLink>().Count(l => l.Id == spObject.Id) > 0;
 
                         if (!isValid)
                             break;
@@ -112,7 +139,7 @@ namespace SPMeta2.Regression.CSOM.Validation
                 {
                     var srcProp = s.GetExpressionValue(m => m.AddToDefaultView);
 
-                    var field = list.Fields.GetById(definition.FieldId);
+                    var field = FindExistingListField(list, definition);
                     var defaultView = list.DefaultView;
 
                     context.Load(defaultView);
@@ -120,7 +147,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
                     context.Load(field);
 
-                    context.ExecuteQuery();
+                    context.ExecuteQueryWithTrace();
 
                     var isValid = list.DefaultView
                         .ViewFields

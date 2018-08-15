@@ -4,6 +4,7 @@ using Microsoft.SharePoint.Client;
 using SPMeta2.Definitions;
 using SPMeta2.Definitions.Fields;
 using SPMeta2.Enumerations;
+using SPMeta2.Services;
 using SPMeta2.Utils;
 
 namespace SPMeta2.CSOM.ModelHandlers.Fields
@@ -34,8 +35,21 @@ namespace SPMeta2.CSOM.ModelHandlers.Fields
             var typedFieldModel = fieldModel.WithAssertAndCast<CalculatedFieldDefinition>("model", value => value.RequireNotNull());
             var typedField = field.Context.CastTo<FieldCalculated>(field);
 
-            typedField.Formula = typedFieldModel.Formula ?? string.Empty;
-            typedField.OutputType = typedField.OutputType = (FieldType)Enum.Parse(typeof(FieldType), typedFieldModel.OutputType);
+            if (!string.IsNullOrEmpty(typedFieldModel.Formula))
+            {
+                // can't really validate it automatically
+                // Improve CalculatedFieldDefinition with field ref check
+                // https://github.com/SubPointSolutions/spmeta2/issues/648
+                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Updating formula for a CalculatedField. Ensure FieldReferences are correct.");
+
+                typedField.Formula = typedFieldModel.Formula;
+
+                typedField.DateFormat = (DateTimeFieldFormatType)
+                    Enum.Parse(typeof(DateTimeFieldFormatType), typedFieldModel.DateFormat);
+            }
+
+            if (!string.IsNullOrEmpty(typedFieldModel.OutputType))
+                typedField.OutputType = (FieldType)Enum.Parse(typeof(FieldType), typedFieldModel.OutputType);
         }
 
         protected override void ProcessSPFieldXElement(XElement fieldTemplate, FieldDefinition fieldModel)
@@ -47,11 +61,20 @@ namespace SPMeta2.CSOM.ModelHandlers.Fields
             if (typedFieldModel.CurrencyLocaleId.HasValue)
                 fieldTemplate.SetAttribute(BuiltInFieldAttributes.LCID, typedFieldModel.CurrencyLocaleId);
 
+            // can't really validate it automatically
+            // Improve CalculatedFieldDefinition with field ref check
+            // https://github.com/SubPointSolutions/spmeta2/issues/648
+            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Crafting formula for a CalculatedField. Ensure FieldReferences are correct.");
+
             // should be a new XML node
             var formulaNode = new XElement(BuiltInFieldAttributes.Formula, typedFieldModel.Formula);
             fieldTemplate.Add(formulaNode);
 
-            fieldTemplate.SetAttribute(BuiltInFieldAttributes.Format, (int)Enum.Parse(typeof(DateTimeFieldFormatType), typedFieldModel.DateFormat));
+            // must be enum name, actually
+
+            // Format="0" when provisioning CalculatedField #969
+            // https://github.com/SubPointSolutions/spmeta2/issues/969
+            fieldTemplate.SetAttribute(BuiltInFieldAttributes.Format, typedFieldModel.DateFormat);
 
             if (typedFieldModel.ShowAsPercentage.HasValue)
                 fieldTemplate.SetAttribute(BuiltInFieldAttributes.Percentage, typedFieldModel.ShowAsPercentage.Value.ToString().ToUpper());

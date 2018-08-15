@@ -1,4 +1,6 @@
-﻿using SPMeta2.Containers.Assertion;
+﻿using Microsoft.SharePoint.Client;
+using SPMeta2.Containers.Assertion;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.Definitions;
@@ -10,11 +12,15 @@ namespace SPMeta2.Regression.CSOM.Validation
     {
         public override void DeployModel(object modelHost, DefinitionBase model)
         {
-            var siteModelHost = modelHost.WithAssertAndCast<SiteModelHost>("modelHost", value => value.RequireNotNull());
             var definition = model.WithAssertAndCast<RootWebDefinition>("model", value => value.RequireNotNull());
+            var spObject = GetCurrentObject(modelHost, definition);
 
-            var site = siteModelHost.HostSite;
-            var spObject = GetCurrentObject(siteModelHost, definition);
+            Site site = null;
+
+            if (modelHost is SiteModelHost)
+                site = (modelHost as SiteModelHost).HostSite;
+            else if (modelHost is WebModelHost)
+                site = (modelHost as WebModelHost).HostSite;
 
             var assert = ServiceFactory.AssertService
                                         .NewAssert(definition, spObject)
@@ -37,13 +43,13 @@ namespace SPMeta2.Regression.CSOM.Validation
                 if (!d.IsPropertyAvailable("ServerRelativeUrl"))
                 {
                     context.Load(d, o => o.ServerRelativeUrl);
-                    context.ExecuteQuery();
+                    context.ExecuteQueryWithTrace();
                 }
 
                 if (!site.IsPropertyAvailable("ServerRelativeUrl"))
                 {
                     site.Context.Load(site, o => o.ServerRelativeUrl);
-                    site.Context.ExecuteQuery();
+                    site.Context.ExecuteQueryWithTrace();
                 }
 
                 var isValid = d.ServerRelativeUrl.ToUpper() == site.ServerRelativeUrl.ToUpper();

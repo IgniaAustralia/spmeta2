@@ -13,7 +13,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using SPMeta2.Containers.Consts;
+using SPMeta2.Containers.Services;
+using SPMeta2.Containers.Utils;
 using SPMeta2.Syntax.Default.Modern;
 
 namespace SPMeta2.Regression.Tests.Impl.Scenarios
@@ -37,7 +39,40 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
 
         #endregion
 
-        #region add security group link
+        #region  security group
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.SecurityGroup")]
+        public void CanDeploy_SecurityGroup_Under_SecurityGroup()
+        {
+            // TODO, handle O365 failure
+            // this ine would fail in O365, that's fine 
+            // must only work onprem with 'AD' groups
+
+            var activeDirectoryOrGlobalO365Groups = RunnerEnvironmentUtils.GetEnvironmentVariables(EnvironmentConsts.DefaultTestADGroups);
+
+            if (activeDirectoryOrGlobalO365Groups.Count() == 0)
+                throw new Exception(string.Format("Environment variable [{0}] is null or empty", EnvironmentConsts.DefaultTestADGroups));
+
+            var randomNestedGroup = Rnd.RandomFromArray(activeDirectoryOrGlobalO365Groups);
+
+            var spGroup = ModelGeneratorService.GetRandomDefinition<SecurityGroupDefinition>();
+            var domainGroup = ModelGeneratorService.GetRandomDefinition<SecurityGroupDefinition>(def =>
+            {
+                def.Name = randomNestedGroup;
+            });
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddSecurityGroup(spGroup, group =>
+                {
+                    group.AddSecurityGroup(domainGroup);
+                });
+            });
+
+            TestModels(new ModelNode[] { siteModel });
+        }
+
 
         [TestMethod]
         [TestCategory("Regression.Scenarios.SecurityGroup")]
@@ -52,7 +87,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                     site.AddSecurityGroup(securityGroup);
                                 });
 
-            TestModels(new[] { siteModel });
+            TestModels(new ModelNode[] { siteModel });
         }
 
         [TestMethod]
@@ -72,7 +107,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                     site.AddSecurityGroup(securityGroup);
                                 });
 
-            TestModels(new[] { siteModel });
+            TestModels(new ModelNode[] { siteModel });
         }
 
 
@@ -91,7 +126,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                     site.AddSecurityGroup(securityGroup);
                                 });
 
-            TestModels(new[] { siteModel });
+            TestModels(new ModelNode[] { siteModel });
         }
 
         #endregion

@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+using System.Runtime.Serialization;
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -23,57 +20,88 @@ namespace SPMeta2.Definitions
     [Serializable]
     [DataContract]
     [SingletonIdentity]
+
+    [ParentHostCapability(typeof(WebDefinition))]
     public class RegionalSettingsDefinition : DefinitionBase
     {
         #region properties
 
         [ExpectValidation]
         [DataMember]
-        public short AdjustHijriDays { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 1, MaxValue = 5)]
+        [ExpectNullable]
+        public short? AdjustHijriDays { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short AlternateCalendarType { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 0, MaxValue = 16)]
+        [ExpectNullable]
+        public short? AlternateCalendarType { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short CalendarType { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 0, MaxValue = 16)]
+        [ExpectNullable]
+        public short? CalendarType { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short Collation { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 0, MaxValue = 38)]
+        [ExpectNullable]
+        public short? Collation { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public uint FirstDayOfWeek { get; set; }
+        [ExpectNullable]
+        [ExpectUpdateAsIntRange(MinValue = 1, MaxValue = 4)]
+        public uint? FirstDayOfWeek { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short FirstWeekOfYear { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 0, MaxValue = 2)]
+        [ExpectNullable]
+        public short? FirstWeekOfYear { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public uint LocaleId { get; set; }
+        [ExpectUpdateAsLCID]
+        [ExpectNullable]
+        public uint? LocaleId { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public bool ShowWeeks { get; set; }
+        [ExpectUpdate]
+        [ExpectNullable]
+        public bool? ShowWeeks { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public bool Time24 { get; set; }
+        [ExpectUpdate]
+        [ExpectNullable]
+        public bool? Time24 { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short WorkDayEndHour { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 5, MaxValue = 8)]
+        [ExpectNullable]
+        public short? WorkDayEndHour { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short WorkDays { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 1, MaxValue = 5)]
+        [ExpectNullable]
+        public short? WorkDays { get; set; }
 
         [ExpectValidation]
         [DataMember]
-        public short WorkDayStartHour { get; set; }
+        [ExpectUpdateAsIntRange(MinValue = 1, MaxValue = 4)]
+        [ExpectNullable]
+        public short? WorkDayStartHour { get; set; }
+
+        [ExpectValidation]
+        [DataMember]
+        [ExpectUpdateAsIntRange(MinValue = 5, MaxValue = 10)]
+        public ushort? TimeZoneId { get; set; }
 
         #endregion
 
@@ -82,6 +110,7 @@ namespace SPMeta2.Definitions
         public override string ToString()
         {
             return new ToStringResult<RegionalSettingsDefinition>(this)
+                          .AddPropertyValue(p => p.TimeZoneId)
                           .AddPropertyValue(p => p.AdjustHijriDays)
                           .AddPropertyValue(p => p.AlternateCalendarType)
                           .AddPropertyValue(p => p.CalendarType)

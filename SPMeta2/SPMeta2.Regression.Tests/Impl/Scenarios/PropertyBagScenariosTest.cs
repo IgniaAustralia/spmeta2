@@ -72,6 +72,18 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
 
         [TestMethod]
         [TestCategory("Regression.Scenarios.PropertyBags")]
+        public void CanDeploy_PropertyBag_OnSite()
+        {
+            var model = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddRandomPropertyBag();
+            });
+
+            TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.PropertyBags")]
         public void CanDeploy_PropertyBag_OnWeb()
         {
             var model = SPMeta2Model
@@ -164,7 +176,10 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
         [TestCategory("Regression.Scenarios.PropertyBags")]
         public void CanDeploy_PropertyBag_OnListItem()
         {
-            WithExcpectedExceptions(new[] { typeof(SPMeta2NotImplementedException) }, () =>
+            WithExcpectedExceptions(new[]
+            {
+                typeof(SPMeta2NotImplementedException)
+            }, () =>
             {
                 var model = SPMeta2Model
                     .NewWebModel(web =>

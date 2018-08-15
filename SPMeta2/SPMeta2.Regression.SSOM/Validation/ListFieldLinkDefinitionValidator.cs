@@ -20,16 +20,55 @@ namespace SPMeta2.Regression.SSOM.Validation
             var definition = model.WithAssertAndCast<ListFieldLinkDefinition>("model", value => value.RequireNotNull());
 
             var list = listModelHost.HostList;
-            var spObject = list.Fields[definition.FieldId];
+            var spObject = FindExistingListField(list, definition);
 
             var assert = ServiceFactory.AssertService
                                       .NewAssert(definition, spObject)
-                                            .ShouldBeEqual(m => m.FieldId, o => o.Id);
+                                      .ShouldNotBeNull(spObject);
+
+            if (!string.IsNullOrEmpty(definition.FieldInternalName))
+                assert.ShouldBeEqual(m => m.FieldInternalName, o => o.InternalName);
+            else
+                assert.SkipProperty(m => m.FieldInternalName, "FieldInternalName is null or empty. Skipping");
+
+            if (definition.FieldId.HasGuidValue())
+                assert.ShouldBeEqual(m => m.FieldId, o => o.Id);
+            else
+                assert.SkipProperty(m => m.FieldId, "FieldId is null or empty. Skipping");
 
             if (!string.IsNullOrEmpty(definition.DisplayName))
                 assert.ShouldBeEqual(m => m.DisplayName, o => o.Title);
             else
-                assert.SkipProperty(m => m.DisplayName, "DisplayName is null or empty. Skipping");
+            {
+
+                var regDisplayTitleProp = definition.PropertyBag.FirstOrDefault(p => p.Name == "_Reg_DisplayName");
+
+                if (regDisplayTitleProp != null)
+                {
+                    // Enhance FieldDefinition with 'pushChangesToLists' option #922
+                    // https://github.com/SubPointSolutions/spmeta2/issues/922
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.DisplayName);
+                        var dstProp = d.GetExpressionValue(m => m.Title);
+
+                        var isValid = regDisplayTitleProp.Value == d.Title;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                {
+                    assert.SkipProperty(m => m.DisplayName, "DisplayName is null or empty. Skipping");
+                }
+            }
 
             if (definition.Required.HasValue)
                 assert.ShouldBeEqual(m => m.Required, o => o.Required);
@@ -64,7 +103,7 @@ namespace SPMeta2.Regression.SSOM.Validation
                             continue;
                         }
 
-                        isValid = ct.FieldLinks.OfType<SPFieldLink>().Count(l => l.Id == s.FieldId) > 0;
+                        isValid = ct.FieldLinks.OfType<SPFieldLink>().Count(l => l.Name == spObject.InternalName) > 0;
 
                         if (!isValid)
                             break;
@@ -102,7 +141,7 @@ namespace SPMeta2.Regression.SSOM.Validation
                 assert.ShouldBeEqual((p, s, d) =>
                 {
                     var srcProp = s.GetExpressionValue(m => m.AddToDefaultView);
-                    var field = list.Fields[definition.FieldId];
+                    var field = FindExistingListField(list, definition);
 
                     var isValid = list.DefaultView
                         .ViewFields

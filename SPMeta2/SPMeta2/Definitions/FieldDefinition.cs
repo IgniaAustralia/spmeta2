@@ -1,18 +1,18 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using SPMeta2.Definitions.Base;
 using SPMeta2.Common;
 using SPMeta2.Enumerations;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
     [DataContract]
+    [Serializable]
     public class FieldAttributeValue : KeyNameValue
     {
         public FieldAttributeValue()
@@ -27,21 +27,49 @@ namespace SPMeta2.Definitions
         }
     }
 
+    /// <summary>
+    /// Corresponds to USerResource.SetValueForUICulture() methods and Title/Description resources.
+    /// </summary>
+    [DataContract]
+    [Serializable]
+
+    public class ValueForUICulture
+    {
+        #region properties
+
+        [DataMember]
+        public int? CultureId { get; set; }
+
+
+        [DataMember]
+        public string CultureName { get; set; }
+
+        [DataMember]
+        public string Value { get; set; }
+
+        #endregion
+    }
+
 
     /// <summary>
     /// Allows to define and deploy SharePoint field.
     /// </summary>
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPField", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Field", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPField", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Field", "Microsoft.SharePoint.Client")]
 
-    [DefaultParentHostAttribute(typeof(SiteDefinition))]
-    [DefaultRootHostAttribute(typeof(SiteDefinition))]
+    [DefaultParentHost(typeof(SiteDefinition))]
+    [DefaultRootHost(typeof(SiteDefinition))]
 
     [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
 
+    [ParentHostCapability(typeof(SiteDefinition))]
+    [ParentHostCapability(typeof(WebDefinition))]
+    [ParentHostCapability(typeof(ListDefinition))]
+
+    [ExpectManyInstances]
     public class FieldDefinition : DefinitionBase
     {
         #region constructors
@@ -56,12 +84,14 @@ namespace SPMeta2.Definitions
 
             AdditionalAttributes = new List<FieldAttributeValue>();
             AddFieldOptions = BuiltInAddFieldOptions.DefaultValue;
+
+            TitleResource = new List<ValueForUICulture>();
+            DescriptionResource = new List<ValueForUICulture>();
         }
 
         #endregion
 
         #region properties
-
 
         /// <summary>
         /// Reflects AddToDefaultView option while adding field to the list
@@ -83,6 +113,8 @@ namespace SPMeta2.Definitions
         /// </summary>
         [ExpectValidation]
         [DataMember]
+
+        [XmlPropertyCapability]
         public string RawXml { get; set; }
 
         /// <summary>
@@ -113,6 +145,14 @@ namespace SPMeta2.Definitions
         public string Title { get; set; }
 
         /// <summary>
+        /// Corresponds to TitleResource property
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public List<ValueForUICulture> TitleResource { get; set; }
+
+        /// <summary>
         /// Description of the target field.
         /// </summary>
         /// 
@@ -122,6 +162,15 @@ namespace SPMeta2.Definitions
         [ExpectNullable]
         public string Description { get; set; }
 
+
+        /// <summary>
+        /// Corresponds to DescriptionResource property
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public List<ValueForUICulture> DescriptionResource { get; set; }
+
         /// <summary>
         /// Group of the target field.
         /// </summary>
@@ -129,6 +178,7 @@ namespace SPMeta2.Definitions
         [ExpectValidation]
         [ExpectUpdate]
         [DataMember]
+        [ExpectNullable]
         public string Group { get; set; }
 
         /// <summary>
@@ -139,7 +189,7 @@ namespace SPMeta2.Definitions
         [ExpectRequired]
         [DataMember]
         [IdentityKey]
-        public Guid Id { get; set; }
+        public virtual Guid Id { get; set; }
 
         /// <summary>
         /// Type of the target field.
@@ -149,7 +199,7 @@ namespace SPMeta2.Definitions
         [ExpectValidation]
         [ExpectRequired]
         [DataMember]
-        public string FieldType { get; set; }
+        public virtual string FieldType { get; set; }
 
         /// <summary>
         /// Required flag for the target field.
@@ -174,6 +224,16 @@ namespace SPMeta2.Definitions
         [ExpectUpdate]
         [DataMember]
         public virtual string DefaultValue { get; set; }
+
+        /// <summary>
+        /// Corresponds to SPField.DefaultFormula
+        /// Writeable for SSOM and read-only, first-time provision for CSOM.
+        /// </summary>
+        [ExpectValidation]
+        //[ExpectUpdate]
+        [DataMember]
+
+        public virtual string DefaultFormula { get; set; }
 
         [ExpectValidation]
         //[ExpectUpdate]
@@ -222,6 +282,10 @@ namespace SPMeta2.Definitions
         public bool? EnforceUniqueValues { get; set; }
 
         [ExpectValidation]
+        [DataMember]
+        public bool? PushChangesToLists { get; set; }
+
+        [ExpectValidation]
         [ExpectUpdate]
         [DataMember]
         public virtual bool Indexed { get; set; }
@@ -236,13 +300,24 @@ namespace SPMeta2.Definitions
         [DataMember]
         public virtual string ValidationMessage { get; set; }
 
+        /// <summary>
+        /// Gets or sets a Boolean value that specifies whether values in the field can be modified.
+        /// Corresponds to SPField.ReadOnlyField property
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+
+        public bool? ReadOnlyField { get; set; }
+
+
         #endregion
 
         #region methods
 
         public override string ToString()
         {
-            return new ToStringResult<FieldDefinition>(this, base.ToString())
+            return new ToStringResult<FieldDefinition>(this)
                          .AddPropertyValue(p => p.InternalName)
                          .AddPropertyValue(p => p.Id)
                          .AddPropertyValue(p => p.Title)

@@ -10,6 +10,8 @@ using SPMeta2.Syntax.Default;
 using SPMeta2.Utils;
 
 using System;
+using System.Linq;
+using SPMeta2.Regression.SSOM.Extensions;
 
 
 namespace SPMeta2.Regression.SSOM.Validation
@@ -26,18 +28,39 @@ namespace SPMeta2.Regression.SSOM.Validation
             var contentTypes = web.AvailableContentTypes;
             var spObject = contentTypes[definition.Name];
 
+            if (spObject == null)
+                spObject = web.ContentTypes[definition.Name];
+
             var assert = ServiceFactory.AssertService.NewAssert(definition, spObject);
 
             assert
+                .ShouldNotBeNull(spObject)
                 .ShouldBeEqual(m => m.Name, o => o.Name)
                 .ShouldBeEqual(m => m.Group, o => o.Group)
                 .ShouldBeEqual(m => m.Hidden, o => o.Hidden);
             //.ShouldBeEqual(m => m.Description, o => o.Description);
 
+
+            if (definition.Sealed.HasValue)
+                assert.ShouldBeEqual(m => m.Sealed, o => o.Sealed);
+            else
+                assert.SkipProperty(m => m.Sealed, "Sealed is null or empty. Skipping.");
+
+            if (definition.ReadOnly.HasValue)
+                assert.ShouldBeEqual(m => m.ReadOnly, o => o.ReadOnly);
+            else
+                assert.SkipProperty(m => m.ReadOnly, "ReadOnly is null or empty. Skipping.");
+
+
+            if (!string.IsNullOrEmpty(definition.JSLink))
+                assert.ShouldBeEqual(m => m.JSLink, o => o.JSLink);
+            else
+                assert.SkipProperty(m => m.JSLink, "JSLink is null or empty. Skipping.");
+
             if (!string.IsNullOrEmpty(definition.Description))
                 assert.ShouldBeEqual(m => m.Description, o => o.Description);
             else
-                assert.SkipProperty(m => m.Description);
+                assert.SkipProperty(m => m.Description, "Description is null or empty. Skipping.");
 
             if (definition.Id == default(Guid))
             {
@@ -126,14 +149,101 @@ namespace SPMeta2.Regression.SSOM.Validation
                     };
                 });
             }
-        }
-    }
 
-    internal static class ContentTypeDefinitionValidatorUtils
-    {
-        public static string GetId(this SPContentType c)
-        {
-            return c.Id.ToString();
+            /// localization
+            if (definition.NameResource.Any())
+            {
+                assert.ShouldBeEqual((p, s, d) =>
+                {
+                    var srcProp = s.GetExpressionValue(def => def.NameResource);
+                    var isValid = true;
+
+                    foreach (var userResource in s.NameResource)
+                    {
+                        var culture = LocalizationService.GetUserResourceCultureInfo(userResource);
+                        var value = d.NameResource.GetValueForUICulture(culture);
+
+                        isValid = userResource.Value == value;
+
+                        if (!isValid)
+                            break;
+                    }
+
+                    return new PropertyValidationResult
+                    {
+                        Tag = p.Tag,
+                        Src = srcProp,
+                        Dst = null,
+                        IsValid = isValid
+                    };
+                });
+            }
+            else
+            {
+                assert.SkipProperty(m => m.NameResource, "NameResource is NULL or empty. Skipping.");
+            }
+
+            if (definition.DescriptionResource.Any())
+            {
+                assert.ShouldBeEqual((p, s, d) =>
+                {
+                    var srcProp = s.GetExpressionValue(def => def.DescriptionResource);
+                    var isValid = true;
+
+                    foreach (var userResource in s.DescriptionResource)
+                    {
+                        var culture = LocalizationService.GetUserResourceCultureInfo(userResource);
+                        var value = d.DescriptionResource.GetValueForUICulture(culture);
+
+                        isValid = userResource.Value == value;
+
+                        if (!isValid)
+                            break;
+                    }
+
+                    return new PropertyValidationResult
+                    {
+                        Tag = p.Tag,
+                        Src = srcProp,
+                        Dst = null,
+                        IsValid = isValid
+                    };
+                });
+            }
+            else
+            {
+                assert.SkipProperty(m => m.DescriptionResource, "DescriptionResource is NULL or empty. Skipping.");
+            }
+            
+            if (!string.IsNullOrEmpty(definition.NewFormUrl))
+                assert.ShouldBeEqual(m => m.NewFormUrl, o => o.NewFormUrl);
+            else
+                assert.SkipProperty(m => m.NewFormUrl, "NewFormUrl is null or empty. Skipping.");
+
+            if (!string.IsNullOrEmpty(definition.NewFormTemplateName))
+                assert.ShouldBeEqual(m => m.NewFormTemplateName, o => o.NewFormTemplateName);
+            else
+                assert.SkipProperty(m => m.NewFormTemplateName, "NewFormTemplateName is null or empty. Skipping.");
+
+            if (!string.IsNullOrEmpty(definition.EditFormUrl))
+                assert.ShouldBeEqual(m => m.EditFormUrl, o => o.EditFormUrl);
+            else
+                assert.SkipProperty(m => m.EditFormUrl, "EditFormUrl is null or empty. Skipping.");
+
+            if (!string.IsNullOrEmpty(definition.EditFormTemplateName))
+                assert.ShouldBeEqual(m => m.EditFormTemplateName, o => o.EditFormTemplateName);
+            else
+                assert.SkipProperty(m => m.EditFormTemplateName, "EditFormTemplateName is null or empty. Skipping.");
+
+            if (!string.IsNullOrEmpty(definition.DisplayFormUrl))
+                assert.ShouldBeEqual(m => m.DisplayFormUrl, o => o.DisplayFormUrl);
+            else
+                assert.SkipProperty(m => m.DisplayFormUrl, "DisplayFormUrl is null or empty. Skipping.");
+
+            if (!string.IsNullOrEmpty(definition.DisplayFormTemplateName))
+                assert.ShouldBeEqual(m => m.DisplayFormTemplateName, o => o.DisplayFormTemplateName);
+            else
+                assert.SkipProperty(m => m.DisplayFormTemplateName, "DisplayFormTemplateName is null or empty. Skipping.");
         }
     }
 }

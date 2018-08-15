@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
+using System.Xml;
 using Microsoft.SharePoint.Client;
 using Microsoft.SharePoint.Client.Publishing;
 using SPMeta2.Common;
 using SPMeta2.CSOM.Extensions;
+using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.Definitions;
 using SPMeta2.Enumerations;
 using SPMeta2.Standard.Definitions;
 using SPMeta2.Standard.Enumerations;
 using SPMeta2.Utils;
-using SPMeta2.CSOM.ModelHandlers;
-using System.Xml;
 
 namespace SPMeta2.CSOM.Standard.ModelHandlers
 {
@@ -75,7 +74,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             });
 
             web.Update();
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
         }
 
         private void ProcessConverBlankSpacesIntoHyphenSetting(
@@ -102,7 +101,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             {
                 context.Load(web);
                 context.Load(web, w => w.AllProperties);
-                context.ExecuteQuery();
+                context.ExecuteQueryWithTrace();
             }
 
             // weird, this is incorrect
@@ -115,7 +114,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             web.AllProperties[key] = value;
 
             web.Update();
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
         }
 
         public static object GetPropertyBagValue(Web web, string key)
@@ -126,7 +125,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             {
                 context.Load(web);
                 context.Load(web, w => w.AllProperties);
-                context.ExecuteQuery();
+                context.ExecuteQueryWithTrace();
             }
 
             if (!web.AllProperties.FieldValues.ContainsKey(key))
@@ -156,7 +155,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
 
                 if (targetLayout != null)
                 {
-                    var resultString = CreateLayoutXmlString(targetLayout);
+                    var resultString = CreateLayoutXmlString(targetLayout, webModelHost.HostSite.RootWeb.ServerRelativeUrl);
                     SetPropertyBagValue(web, "__DefaultPageLayout", resultString);
                 }
             }
@@ -166,12 +165,13 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
         {
             var rootWeb = webModelHost.HostSite.RootWeb;
             var context = rootWeb.Context;
+            context.Load(rootWeb, r => r.ServerRelativeUrl);
 
             var masterPageList = rootWeb.QueryAndGetListByUrl("/_catalogs/masterpage");
 
             var pageLayouts = masterPageList.GetItems(CamlQueryTemplates.ItemsByFieldValueBeginsWithQuery("ContentTypeId", BuiltInPublishingContentTypeId.PageLayout));
             context.Load(pageLayouts);
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
 
             return pageLayouts.ToList();
         }
@@ -208,13 +208,13 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
 
                 if (selectedPageLayouts.Any())
                 {
-                    var resultString = CreateLayoutsXmlString(selectedPageLayouts);
+                    var resultString = CreateLayoutsXmlString(selectedPageLayouts,rootWeb.ServerRelativeUrl);
                     SetPropertyBagValue(web, "__PageLayouts", resultString);
                 }
             }
         }
 
-        private static string CreateLayoutXmlString(ListItem pageLayout)
+        private static string CreateLayoutXmlString(ListItem pageLayout, string serverRelativeWebUrl)
         {
             var xmlDocument = new XmlDocument();
             var rootXmlNode = xmlDocument.CreateElement("pagelayouts");
@@ -226,7 +226,14 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             xmlAttribute.Value = pageLayout[BuiltInInternalFieldNames.UniqueId].ToString();
 
             var xmlAttribute2 = xmlDocument.CreateAttribute("url");
-            xmlAttribute2.Value = pageLayout[BuiltInInternalFieldNames.FileRef].ToString();
+
+            // remove starting slash
+            // https://github.com/SubPointSolutions/spmeta2/issues/544
+
+            var fileRef = pageLayout[BuiltInInternalFieldNames.FileRef].ToString()
+                                        .Replace(serverRelativeWebUrl, string.Empty);
+
+            xmlAttribute2.Value = UrlUtility.RemoveStartingSlash(fileRef);
 
             xmlNode.Attributes.SetNamedItem(xmlAttribute);
             xmlNode.Attributes.SetNamedItem(xmlAttribute2);
@@ -234,7 +241,7 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
             return xmlNode.OuterXml;
         }
 
-        private static string CreateLayoutsXmlString(IEnumerable<ListItem> pageLayouts)
+        private static string CreateLayoutsXmlString(IEnumerable<ListItem> pageLayouts, string serverRelativeWebUrl)
         {
             var xmlDocument = new XmlDocument();
             var rootXmlNode = xmlDocument.CreateElement("pagelayouts");
@@ -248,7 +255,13 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers
                 xmlAttribute.Value = pageLayout[BuiltInInternalFieldNames.UniqueId].ToString();
 
                 var xmlAttribute2 = xmlDocument.CreateAttribute("url");
-                xmlAttribute2.Value = pageLayout[BuiltInInternalFieldNames.FileRef].ToString();
+
+                // remove starting slash
+                // https://github.com/SubPointSolutions/spmeta2/issues/544
+                var fileRef = pageLayout[BuiltInInternalFieldNames.FileRef].ToString()
+                                                    .Replace(serverRelativeWebUrl, string.Empty);
+
+                xmlAttribute2.Value = UrlUtility.RemoveStartingSlash(fileRef);
 
                 xmlNode.Attributes.SetNamedItem(xmlAttribute);
                 xmlNode.Attributes.SetNamedItem(xmlAttribute2);

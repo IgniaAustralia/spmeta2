@@ -11,6 +11,7 @@ using SPMeta2.Containers;
 using SPMeta2.Syntax.Default;
 using SPMeta2.Definitions;
 using SPMeta2.Enumerations;
+using SPMeta2.Models;
 
 namespace SPMeta2.Regression.Tests.Impl.Scenarios
 {
@@ -34,6 +35,46 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
         public static void Cleanup()
         {
             InternalCleanup();
+        }
+
+        #endregion
+
+        #region by id or by internla name
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.ListFieldLinkDefinition.IdOrName")]
+        public void CanDeploy_ListFieldLink_WithFieldId()
+        {
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddRandomList(list =>
+                {
+                    list.AddListFieldLink(new ListFieldLinkDefinition()
+                    {
+                        FieldId = BuiltInFieldId.URL
+                    });
+                });
+            });
+
+            TestModel(webModel);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.ListFieldLinkDefinition.IdOrName")]
+        public void CanDeploy_ListFieldLink_WithFieldInternalName()
+        {
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddRandomList(list =>
+                {
+                    list.AddListFieldLink(new ListFieldLinkDefinition()
+                    {
+                        FieldInternalName = BuiltInInternalFieldNames.URL
+                    });
+                });
+            });
+
+            TestModel(webModel);
         }
 
         #endregion
@@ -117,7 +158,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                        });
                    });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new  ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -189,7 +230,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
             //           });
             //       });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new  ModelNode[] { siteModel, webModel });
         }
 
         #endregion

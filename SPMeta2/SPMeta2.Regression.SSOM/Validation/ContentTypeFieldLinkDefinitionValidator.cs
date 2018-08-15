@@ -5,6 +5,7 @@ using SPMeta2.Definitions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.SSOM.ModelHandlers;
 using SPMeta2.Utils;
+using SPMeta2.SSOM.ModelHosts;
 
 
 namespace SPMeta2.Regression.SSOM.Validation
@@ -13,14 +14,29 @@ namespace SPMeta2.Regression.SSOM.Validation
     {
         public override void DeployModel(object modelHost, DefinitionBase model)
         {
-            var spModel = modelHost.WithAssertAndCast<SPContentType>("modelHost", value => value.RequireNotNull());
+            var typedModelhost = modelHost.WithAssertAndCast<ContentTypeModelHost>("model", value => value.RequireNotNull());
             var definition = model.WithAssertAndCast<ContentTypeFieldLinkDefinition>("model", value => value.RequireNotNull());
 
-            var spObject = spModel.FieldLinks[definition.FieldId];
+            var spModel = typedModelhost.HostContentType;
+
+            var spObject = FindExistingFieldLink(spModel, definition);
 
             var assert = ServiceFactory.AssertService
                                        .NewAssert(definition, spObject)
-                                             .ShouldBeEqual(m => m.FieldId, o => o.Id);
+                                       .ShouldNotBeNull(spObject);
+
+            //.ShouldBeEqual(m => m.FieldId, o => o.Id);
+
+            if (!string.IsNullOrEmpty(definition.FieldInternalName))
+                assert.ShouldBeEqual(m => m.FieldInternalName, o => o.Name);
+            else
+                assert.SkipProperty(m => m.FieldInternalName, "FieldInternalName is NULL or empty. Skipping.");
+
+            if (definition.FieldId.HasGuidValue())
+                assert.ShouldBeEqual(m => m.FieldId, o => o.Id);
+            else
+                assert.SkipProperty(m => m.FieldId, "FieldId is NULL. Skipping.");
+
 
             if (!string.IsNullOrEmpty(definition.DisplayName))
                 assert.ShouldBeEqual(m => m.DisplayName, o => o.DisplayName);

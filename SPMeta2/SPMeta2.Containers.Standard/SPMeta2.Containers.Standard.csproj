@@ -21,7 +21,8 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <DocumentationFile>bin\Debug\SPMeta2.Containers.Standard.XML</DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -47,6 +48,24 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI-O365|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\CI-O365\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'CI-CSOM2013|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\CI-CSOM2013\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -57,6 +76,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DefinitionGenerators\DesignPackageDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\ProfileTypePropertyDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\CorePropertyDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\DocumentSetDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\MetadataNavigationSettingsDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\DisplayTemplates\FilterDisplayTemplateDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\DisplayTemplates\JavaScriptDisplayTemplateDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\DisplayTemplates\ItemDisplayTemplateDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\DisplayTemplates\ControlDisplayTemplateDefinitionGenerator.cs" />
@@ -65,6 +90,7 @@
     <Compile Include="DefinitionGenerators\Fields\ImageFieldDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Fields\LinkFieldDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Fields\HTMLFieldDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\ManagedPropertyDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\ReusableHTMLItemDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\ReusableTextItemDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\SearchSettingsDefinitionGenerator.cs" />
@@ -79,18 +105,33 @@
     <Compile Include="DefinitionGenerators\SearchConfigurationDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Taxonomy\TaxonomyTermLabelDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\WebNavigationSettingsDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\AdvancedSearchBoxDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\CategoryWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\CommunityAdminWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\CommunityJoinWebPartDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Webparts\ContentBySearchWebPartDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Webparts\ContentByQueryWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\DocumentSetContentsWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\DocumentSetPropertiesWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\MyMembershipWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\RefinementScriptWebPartDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Webparts\ProjectSummaryWebPartDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Webparts\ResultScriptWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\RSSAggregatorWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\SearchBoxScriptWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\SearchNavigationWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\SiteDocumentsDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\SocialCommentWebPartDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Webparts\SummaryLinkWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\TableOfContentsWebPartDefinitionGenerator.cs" />
+    <Compile Include="DefinitionGenerators\Webparts\TagCloudWebPartDefinitionGenerator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublishingPageLayoutTemplates.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>PublishingPageLayoutTemplates.resx</DependentUpon>
     </Compile>
-    <Compile Include="RandomContainersSyntax.cs" />
+    <Compile Include="RandomStandardContainersSyntax.cs" />
     <Compile Include="DefinitionGenerators\Taxonomy\TaxonomyGroupDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Taxonomy\TaxonomyStoreDefinitionGenerator.cs" />
     <Compile Include="DefinitionGenerators\Taxonomy\TaxonomyTermDefinitionGenerator.cs" />
@@ -110,10 +151,6 @@
       <Project>{F310878E-9B72-4C3C-AE5D-C60B3515E2FC}</Project>
       <Name>SPMeta2.Standard</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SPMeta2.Syntax.Default\SPMeta2.Syntax.Default.csproj">
-      <Project>{6F7E5D77-0A17-4409-BE8C-94389D276FA9}</Project>
-      <Name>SPMeta2.Syntax.Default</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SPMeta2\SPMeta2.csproj">
       <Project>{EE49D3FD-6180-40E6-829F-6831FF89DAC6}</Project>
       <Name>SPMeta2</Name>
@@ -130,6 +167,11 @@
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties BuildVersion_StartDate="2000/1/1" />
+    </VisualStudio>
+  </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

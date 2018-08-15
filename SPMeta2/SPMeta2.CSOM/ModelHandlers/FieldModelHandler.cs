@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 using System.Xml.Linq;
 using Microsoft.SharePoint.Client;
 using SPMeta2.Common;
@@ -8,15 +7,24 @@ using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.Definitions;
 using SPMeta2.Enumerations;
-using SPMeta2.Exceptions;
-using SPMeta2.ModelHandlers;
 using SPMeta2.Services;
 using SPMeta2.Utils;
+using System.Collections.Generic;
+using SPMeta2.Definitions.Fields;
 
 namespace SPMeta2.CSOM.ModelHandlers
 {
     public class FieldModelHandler : CSOMModelHandlerBase
     {
+        #region constructors
+
+        static FieldModelHandler()
+        {
+
+        }
+
+        #endregion
+
         #region properties
 
         public override Type TargetType
@@ -24,7 +32,8 @@ namespace SPMeta2.CSOM.ModelHandlers
             get { return typeof(FieldDefinition); }
         }
 
-        protected SiteModelHost CurrentSiteModelHost { get; set; }
+        protected ClientContext CurrentHostClientContext { get; set; }
+        protected CSOMModelHostBase CurrentModelHost { get; set; }
 
         #endregion
 
@@ -43,10 +52,10 @@ namespace SPMeta2.CSOM.ModelHandlers
                 new XAttribute(BuiltInFieldAttributes.CanToggleHidden, "TRUE"));
         }
 
-        #endregion
-
-        #region methods
-
+        protected virtual bool PreloadProperties(Field field)
+        {
+            return false;
+        }
 
         protected List ExtractListFromHost(object modelHost)
         {
@@ -56,70 +65,13 @@ namespace SPMeta2.CSOM.ModelHandlers
             return null;
         }
 
-        protected Field FindField(object modelHost, FieldDefinition definition)
+        protected Field GetField(object modelHost, FieldDefinition definition)
         {
-            if (modelHost is SiteModelHost)
-                return FindExistingSiteField(modelHost as SiteModelHost, definition);
+            FieldCollection fields = FieldLookupService.GetFieldCollection(modelHost);
 
-            if (modelHost is WebModelHost)
-                return FindExistingWebField(modelHost as WebModelHost, definition);
-
-            if (modelHost is ListModelHost)
-                return FindExistingListField((modelHost as ListModelHost).HostList, definition);
-
-            TraceService.ErrorFormat((int)LogEventId.ModelProvisionCoreCall, "FindField() does not support modelHost of type: [{0}]. Throwing SPMeta2NotSupportedException", modelHost);
-
-            throw new SPMeta2NotSupportedException(
-                string.Format("Validation for artifact of type [{0}] under model host [{1}] is not supported.",
-                    definition.GetType(),
-                    modelHost.GetType()));
+            return FieldLookupService.GetField(fields, definition.Id, definition.InternalName, definition.Title);
         }
 
-        protected Field FindExistingWebField(WebModelHost siteModelHost, FieldDefinition fieldDefinition)
-        {
-            var id = fieldDefinition.Id;
-            var rootWeb = siteModelHost.HostWeb;
-
-            TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "FindExistingSiteField with Id: [{0}]", id);
-
-            var context = rootWeb.Context;
-            var scope = new ExceptionHandlingScope(context);
-
-            Field field = null;
-
-            using (scope.StartScope())
-            {
-                using (scope.StartTry())
-                {
-                    rootWeb.Fields.GetById(id);
-                }
-
-                using (scope.StartCatch())
-                {
-
-                }
-            }
-
-            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-            context.ExecuteQueryWithTrace();
-
-            if (!scope.HasException)
-            {
-                field = rootWeb.Fields.GetById(id);
-                context.Load(field);
-
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Found site field with Id: [{0}]", id);
-                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-
-                context.ExecuteQueryWithTrace();
-            }
-            else
-            {
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Cannot find site field with Id: [{0}]", id);
-            }
-
-            return field;
-        }
 
         protected virtual Type GetTargetFieldType(FieldDefinition model)
         {
@@ -158,14 +110,19 @@ namespace SPMeta2.CSOM.ModelHandlers
         protected Site HostSite { get; set; }
         protected Web HostWeb { get; set; }
 
+        protected object ModelHost { get; set; }
+
         public override void DeployModel(object modelHost, DefinitionBase model)
         {
+            this.ModelHost = modelHost;
+
             if (!(modelHost is SiteModelHost
                 || modelHost is WebModelHost
                 || modelHost is ListModelHost))
                 throw new ArgumentException("modelHost needs to be SiteModelHost/WebModelHost/ListModelHost instance.");
 
-            CurrentSiteModelHost = modelHost as SiteModelHost;
+            CurrentHostClientContext = (modelHost as CSOMModelHostBase).HostClientContext;
+            CurrentModelHost = modelHost.WithAssertAndCast<CSOMModelHostBase>("modelHost", value => value.RequireNotNull());
 
             HostSite = ExtractSiteFromHost(modelHost);
             HostWeb = ExtractWebFromHost(modelHost);
@@ -186,28 +143,32 @@ namespace SPMeta2.CSOM.ModelHandlers
                 ObjectDefinition = model,
                 ModelHost = modelHost
             });
-            InvokeOnModelEvent<FieldDefinition, Field>(currentField, ModelEventType.OnUpdating);
 
-            if (modelHost is SiteModelHost)
+            if (modelHost is ListModelHost)
             {
-                var siteHost = modelHost as SiteModelHost;
-                context = siteHost.HostSite.Context;
+                var listHost = modelHost as ListModelHost;
+                context = listHost.HostList.Context;
 
-                currentField = DeploySiteField(siteHost as SiteModelHost, fieldModel);
+                currentField = DeployListField(modelHost as ListModelHost, fieldModel);
             }
-            if (modelHost is WebModelHost)
+            else if (modelHost is WebModelHost)
             {
                 var webHost = modelHost as WebModelHost;
                 context = webHost.HostWeb.Context;
 
                 currentField = DeployWebField(webHost as WebModelHost, fieldModel);
             }
-            else if (modelHost is ListModelHost)
-            {
-                var listHost = modelHost as ListModelHost;
-                context = listHost.HostList.Context;
 
-                currentField = DeployListField(modelHost as ListModelHost, fieldModel);
+            else if (modelHost is SiteModelHost)
+            {
+                var siteHost = modelHost as SiteModelHost;
+                context = siteHost.HostSite.Context;
+
+                currentField = DeploySiteField(siteHost as SiteModelHost, fieldModel);
+            }
+            else
+            {
+                throw new ArgumentException("modelHost needs to be SiteModelHost/WebModelHost/ListModelHost instance.");
             }
 
             object typedField = null;
@@ -235,59 +196,37 @@ namespace SPMeta2.CSOM.ModelHandlers
                 ObjectDefinition = model,
                 ModelHost = modelHost
             });
-            InvokeOnModelEvent<FieldDefinition, Field>(currentField, ModelEventType.OnUpdated);
 
-            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "UpdateAndPushChanges(true)");
-            currentField.UpdateAndPushChanges(true);
-
-            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-            context.ExecuteQueryWithTrace();
-        }
-
-        private Field DeployWebField(WebModelHost webModelHost, FieldDefinition fieldDefinition)
-        {
-            var id = fieldDefinition.Id;
-            var web = webModelHost.HostWeb;
-
-            TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "FindExistingWebField with Id: [{0}]", id);
-
-            var context = web.Context;
-            var scope = new ExceptionHandlingScope(context);
-
-            Field field = null;
-
-            using (scope.StartScope())
+            if (fieldModel.PushChangesToLists.HasValue)
             {
-                using (scope.StartTry())
-                {
-                    web.Fields.GetById(id);
-                }
+                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                    string.Format("UpdateAndPushChanges({0})", fieldModel.PushChangesToLists));
 
-                using (scope.StartCatch())
-                {
-
-                }
-            }
-
-            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-            context.ExecuteQueryWithTrace();
-
-            if (!scope.HasException)
-            {
-                field = web.Fields.GetById(id);
-                context.Load(field);
-
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Found site field with Id: [{0}]", id);
-                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-
-                context.ExecuteQueryWithTrace();
+                currentField.UpdateAndPushChanges(fieldModel.PushChangesToLists.Value);
             }
             else
             {
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Cannot find site field with Id: [{0}]", id);
+                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "UpdateAndPushChanges(true)");
+                // Why does SSOM handler distinguish between list and web/site fields and csom doesn't?
+                currentField.UpdateAndPushChanges(true);
             }
 
-            return EnsureField(context, field, web.Fields, fieldDefinition);
+            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
+            context.ExecuteQueryWithTrace();
+
+            CurrentHostClientContext = null;
+        }
+
+        private Field DeployWebField(WebModelHost webModelHost, FieldDefinition fieldModel)
+        {
+            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Deploying web field");
+
+            var web = webModelHost.HostWeb;
+            var context = web.Context;
+
+            var field = GetField(webModelHost, fieldModel);
+
+            return EnsureField(context, field, web.Fields, fieldModel);
         }
 
         private Field DeployListField(ListModelHost modelHost, FieldDefinition fieldModel)
@@ -335,52 +274,6 @@ namespace SPMeta2.CSOM.ModelHandlers
             return EnsureField(context, null, list.Fields, fieldModel);
         }
 
-        protected Field FindExistingSiteField(SiteModelHost siteHost, FieldDefinition fieldDefinition)
-        {
-            var id = fieldDefinition.Id;
-            var rootWeb = siteHost.HostSite.RootWeb;
-
-            TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "FindExistingSiteField with Id: [{0}]", id);
-
-            var context = rootWeb.Context;
-            var scope = new ExceptionHandlingScope(context);
-
-            Field field = null;
-
-            using (scope.StartScope())
-            {
-                using (scope.StartTry())
-                {
-                    rootWeb.Fields.GetById(id);
-                }
-
-                using (scope.StartCatch())
-                {
-
-                }
-            }
-
-            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-            context.ExecuteQueryWithTrace();
-
-            if (!scope.HasException)
-            {
-                field = rootWeb.Fields.GetById(id);
-                context.Load(field);
-
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Found site field with Id: [{0}]", id);
-                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
-
-                context.ExecuteQueryWithTrace();
-            }
-            else
-            {
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Cannot find site field with Id: [{0}]", id);
-            }
-
-            return field;
-        }
-
         private Field DeploySiteField(SiteModelHost siteModelHost, FieldDefinition fieldModel)
         {
             TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Deploying site field");
@@ -388,7 +281,7 @@ namespace SPMeta2.CSOM.ModelHandlers
             var site = siteModelHost.HostSite;
             var context = site.Context;
 
-            var field = FindExistingSiteField(siteModelHost, fieldModel);
+            var field = GetField(siteModelHost, fieldModel);
 
             return EnsureField(context, field, site.RootWeb.Fields, fieldModel);
         }
@@ -398,9 +291,12 @@ namespace SPMeta2.CSOM.ModelHandlers
             field.Title = definition.Title;
 
             field.Description = definition.Description ?? string.Empty;
-            field.Group = definition.Group ?? string.Empty;
+            field.Group = string.IsNullOrEmpty(definition.Group) ? "Custom" : definition.Group;
 
             field.Required = definition.Required;
+
+            if (definition.ReadOnlyField.HasValue)
+                field.ReadOnlyField = definition.ReadOnlyField.Value;
 
             if (!string.IsNullOrEmpty(definition.StaticName))
                 field.StaticName = definition.StaticName;
@@ -417,13 +313,21 @@ namespace SPMeta2.CSOM.ModelHandlers
             if (definition.EnforceUniqueValues.HasValue)
                 field.EnforceUniqueValues = definition.EnforceUniqueValues.Value;
 
-            field.Indexed = definition.Indexed;
-
 #if !NET35
-            field.JSLink = definition.JSLink;
+            // Setting the index property will throw an exception for dependent lookup fields
+            if (!(definition is DependentLookupFieldDefinition))
+            {
+                field.Indexed = definition.Indexed;
+            }
+
+            // setting up JS link seems to crash fields provision in some cases
+            // Issue deploying fields to Site attached to Office 365 Group #945
+            // https://github.com/SubPointSolutions/spmeta2/issues/945
+            if (!string.IsNullOrEmpty(definition.JSLink))
+                field.JSLink = definition.JSLink;
 #endif
 
-            // missed in CSOM
+#if !NET35
 
             // NASTY CALLS
             // http://sharepoint.stackexchange.com/questions/94911/hide-a-field-in-list-when-new-item-created-but-show-it-when-edit
@@ -446,6 +350,8 @@ namespace SPMeta2.CSOM.ModelHandlers
                 field.Context.ExecuteQueryWithTrace();
             }
 
+#endif
+
             //if (definition.AllowDeletion.HasValue)
             //    field.AllowDeletion = definition.AllowDeletion.Value;
 
@@ -457,6 +363,8 @@ namespace SPMeta2.CSOM.ModelHandlers
 
             //if (definition.ShowInVersionHistory.HasValue)
             //    field.ShowInVersionHistory = definition.ShowInVersionHistory.Value;
+
+            ProcessLocalization(field, definition);
         }
 
         private Field EnsureField(ClientRuntimeContext context, Field currentField, FieldCollection fieldCollection,
@@ -473,6 +381,11 @@ namespace SPMeta2.CSOM.ModelHandlers
                 var addFieldOptions = (AddFieldOptions)(int)fieldModel.AddFieldOptions;
                 var resultField = fieldCollection.AddFieldAsXml(fieldDef, fieldModel.AddToDefaultView, addFieldOptions);
 
+                if (PreloadProperties(resultField))
+                {
+                    context.ExecuteQueryWithTrace();
+                }
+
                 ProcessFieldProperties(resultField, fieldModel);
 
                 return resultField;
@@ -487,48 +400,49 @@ namespace SPMeta2.CSOM.ModelHandlers
             }
         }
 
-        protected Field FindExistingListField(List list, FieldDefinition fieldModel)
+        protected virtual void HandleIncorectlyDeletedTaxonomyField(FieldDefinition fieldModel, FieldCollection fields)
         {
-            TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "FindListField with Id: [{0}]", fieldModel.Id);
+            return;
 
-            var context = list.Context;
+            // excluded due ot potential data corruption
+            // such issues shoud be handled by end user manually
 
-            Field field;
+            //var context = fields.Context;
 
-            var scope = new ExceptionHandlingScope(context);
+            //var isTaxField =
+            //      fieldModel.FieldType.ToUpper() == BuiltInFieldTypes.TaxonomyFieldType.ToUpper()
+            //      || fieldModel.FieldType.ToUpper() == BuiltInFieldTypes.TaxonomyFieldTypeMulti.ToUpper();
 
-            using (scope.StartScope())
-            {
-                using (scope.StartTry())
-                {
-                    field = list.Fields.GetById(fieldModel.Id);
-                    context.Load(field);
-                }
-                using (scope.StartCatch())
-                {
-                    field = null;
-                    //context.Load(field);
-                }
-            }
+            //if (!isTaxField)
+            //    return;
 
-            context.ExecuteQueryWithTrace();
+            //var existingIndexedFieldName = fieldModel.Title + "_0";
+            //var query = from field in fields
+            //            where field.Title == existingIndexedFieldName
+            //            select field;
 
-            if (!scope.HasException)
-            {
-                field = list.Fields.GetById(fieldModel.Id);
-                context.Load(field);
 
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Found list field with Id: [{0}]", fieldModel.Id);
-                TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "ExecuteQuery()");
+            //var result = context.LoadQuery(query);
+            //context.ExecuteQueryWithTrace();
 
-                context.ExecuteQueryWithTrace();
-            }
-            else
-            {
-                TraceService.VerboseFormat((int)LogEventId.ModelProvisionCoreCall, "Cannot find list field with Id: [{0}]", fieldModel.Id);
-            }
+            //if (result.Count() > 0)
+            //{
+            //    var existingIndexedField = result.FirstOrDefault();
+            //    if (existingIndexedField != null && existingIndexedField.FieldTypeKind == FieldType.Note)
+            //    {
+            //        // tmp fix
+            //        // https://github.com/SubPointSolutions/spmeta2/issues/521
+            //        try
+            //        {
+            //            existingIndexedField.DeleteObject();
+            //            context.ExecuteQueryWithTrace();
+            //        }
+            //        catch (Exception e)
+            //        {
 
-            return field;
+            //        }
+            //    }
+            //}
         }
 
         protected virtual void ProcessSPFieldXElement(XElement fieldTemplate, FieldDefinition fieldModel)
@@ -549,8 +463,10 @@ namespace SPMeta2.CSOM.ModelHandlers
                 fieldTemplate.SetAttribute(BuiltInFieldAttributes.StaticName, fieldModel.InternalName);
 
             // additions
+#if !NET35
             if (!String.IsNullOrEmpty(fieldModel.JSLink))
                 fieldTemplate.SetAttribute(BuiltInFieldAttributes.JSLink, fieldModel.JSLink);
+#endif
 
             if (!string.IsNullOrEmpty(fieldModel.DefaultValue))
                 fieldTemplate.SetSubNode("Default", fieldModel.DefaultValue);
@@ -580,8 +496,21 @@ namespace SPMeta2.CSOM.ModelHandlers
             if (fieldModel.AllowDeletion.HasValue)
                 fieldTemplate.SetAttribute(BuiltInFieldAttributes.AllowDeletion, fieldModel.AllowDeletion.Value.ToString().ToUpper());
 
-            fieldTemplate.SetAttribute(BuiltInFieldAttributes.Indexed, fieldModel.Indexed.ToString().ToUpper());
+            // TODO: maybe this can be done in a generic way?
+            if (!(fieldModel is DependentLookupFieldDefinition))
+            {
+                fieldTemplate.SetAttribute(BuiltInFieldAttributes.Indexed, fieldModel.Indexed.ToString().ToUpper());
+            }
 
+            // Enhance FieldDefinition provision - investigate DefaultFormula property support for CSOM #842
+            // https://github.com/SubPointSolutions/spmeta2/issues/842
+            if (!string.IsNullOrEmpty(fieldModel.DefaultFormula))
+            {
+                var defaultFormulaNode = new XElement("DefaultFormula");
+                defaultFormulaNode.Value = fieldModel.DefaultFormula;
+
+                fieldTemplate.Add(defaultFormulaNode);
+            }
         }
 
         protected virtual string GetTargetSPFieldXmlDefinition(FieldDefinition fieldModel)
@@ -601,7 +530,15 @@ namespace SPMeta2.CSOM.ModelHandlers
             return fieldTemplate.ToString();
         }
 
-        #endregion
+        protected virtual void ProcessLocalization(Field obj, FieldDefinition definition)
+        {
+            ProcessGenericLocalization(obj, new Dictionary<string, List<ValueForUICulture>>
+            {
+                { "TitleResource", definition.TitleResource },
+                { "DescriptionResource", definition.DescriptionResource },
+            });
+        }
 
+        #endregion
     }
 }

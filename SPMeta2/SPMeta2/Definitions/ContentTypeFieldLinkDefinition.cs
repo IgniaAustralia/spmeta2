@@ -1,9 +1,9 @@
-﻿using SPMeta2.Attributes;
+﻿using System;
+using System.Runtime.Serialization;
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using SPMeta2.Definitions.Base;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -11,17 +11,20 @@ namespace SPMeta2.Definitions
     /// Allows to attach field to the target content type.
     /// </summary>
     /// 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPFieldLink", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.FieldLink", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPFieldLink", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.FieldLink", "Microsoft.SharePoint.Client")]
 
-    [DefaultRootHostAttribute(typeof(SiteDefinition))]
-    [DefaultParentHostAttribute(typeof(ContentTypeDefinition))]
+    [DefaultRootHost(typeof(SiteDefinition))]
+    [DefaultParentHost(typeof(ContentTypeDefinition))]
 
     [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
 
+    [ExpectManyInstances]
+
+    [ParentHostCapability(typeof(ContentTypeDefinition))]
     public class ContentTypeFieldLinkDefinition : DefinitionBase
     {
         #region properties
@@ -32,11 +35,17 @@ namespace SPMeta2.Definitions
         /// </summary>
         /// 
 
-        [ExpectRequired]
         [ExpectValidation]
+        [ExpectRequired(GroupName = "FieldIdOrName")]
         [DataMember]
         [IdentityKey]
-        public Guid FieldId { get; set; }
+        public Guid? FieldId { get; set; }
+
+        [ExpectValidation]
+        [ExpectRequired(GroupName = "FieldIdOrName")]
+        [DataMember]
+        [IdentityKey]
+        public string FieldInternalName { get; set; }
 
         [ExpectValidation]
         [DataMember]

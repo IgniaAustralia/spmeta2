@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using System.Web;
 using SPMeta2.Definitions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.SSOM.ModelHandlers;
@@ -35,15 +35,28 @@ namespace SPMeta2.Regression.SSOM.Validation
 
             assert.ShouldBeEqual((p, s, d) =>
             {
-                var srcProp = s.GetExpressionValue(def => def.Url);
-                var dstProp = d.GetExpressionValue(ct => ct.Url);
+                var srcProp = s.GetExpressionValue(def => def.Properties);
+                var dstProp = d.GetExpressionValue(ct => ct.Properties);
 
-                var srcUrl = s.Url;
-                var dstUrl = d.Url;
+                var isValid = true;
 
-                srcUrl = ResolveTokenizedUrl(CurrentWebModelHost, definition);
+                var srcValues = s.Properties;
+                var dstValues = d.Properties;
 
-                var isValid = d.Url.ToUpper().EndsWith(srcUrl.ToUpper());
+                foreach (var srcValue in srcValues)
+                {
+                    if (!dstValues.ContainsKey(srcValue.Key))
+                    {
+                        isValid = false;
+                        break;
+                    }
+
+                    if (ConvertUtils.ToString(dstValues[srcValue.Key]) != srcValue.Value)
+                    {
+                        isValid = false;
+                        break;
+                    }
+                }
 
                 return new PropertyValidationResult
                 {
@@ -53,6 +66,63 @@ namespace SPMeta2.Regression.SSOM.Validation
                     IsValid = isValid
                 };
             });
+
+            assert.ShouldBeEqual((p, s, d) =>
+            {
+                var srcProp = s.GetExpressionValue(def => def.Url);
+                var dstProp = d.GetExpressionValue(ct => ct.Url);
+
+                var srcUrl = s.Url;
+                var dstUrl = d.Url;
+
+                srcUrl = ResolveTokenizedUrl(CurrentWebModelHost, definition);
+
+                srcUrl = HttpUtility.UrlDecode(srcUrl);
+                dstUrl = HttpUtility.UrlDecode(dstUrl);
+
+                var isValid = dstUrl.ToUpper().EndsWith(srcUrl.ToUpper());
+
+                return new PropertyValidationResult
+                {
+                    Tag = p.Tag,
+                    Src = srcProp,
+                    Dst = dstProp,
+                    IsValid = isValid
+                };
+            });
+
+            /// localization
+            if (definition.TitleResource.Any())
+            {
+                assert.ShouldBeEqual((p, s, d) =>
+                {
+                    var srcProp = s.GetExpressionValue(def => def.TitleResource);
+                    var isValid = true;
+
+                    foreach (var userResource in s.TitleResource)
+                    {
+                        var culture = LocalizationService.GetUserResourceCultureInfo(userResource);
+                        var value = d.TitleResource.GetValueForUICulture(culture);
+
+                        isValid = userResource.Value == value;
+
+                        if (!isValid)
+                            break;
+                    }
+
+                    return new PropertyValidationResult
+                    {
+                        Tag = p.Tag,
+                        Src = srcProp,
+                        Dst = null,
+                        IsValid = isValid
+                    };
+                });
+            }
+            else
+            {
+                assert.SkipProperty(m => m.TitleResource, "TitleResource is NULL or empty. Skipping.");
+            }
         }
     }
 }

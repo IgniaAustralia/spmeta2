@@ -1,8 +1,7 @@
-﻿using SPMeta2.Definitions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
+using SPMeta2.Definitions;
+using SPMeta2.Definitions.ContentTypes;
+using SPMeta2.Definitions.Fields;
 
 namespace SPMeta2.Common
 {
@@ -60,7 +59,8 @@ namespace SPMeta2.Common
                 {
                     typeof (BreakRoleInheritanceDefinition),
                     typeof (ResetRoleInheritanceDefinition),
-               
+                    typeof (SecurityRoleLinkDefinition),
+
                     typeof (PropertyDefinition)
                 }));
         }
@@ -74,6 +74,7 @@ namespace SPMeta2.Common
                     typeof (BreakRoleInheritanceDefinition),
                     typeof (ResetRoleInheritanceDefinition),
                     typeof (SecurityRoleLinkDefinition),
+
                     typeof (PropertyDefinition)
                 }));
         }
@@ -93,9 +94,18 @@ namespace SPMeta2.Common
                     typeof (ContentTypeDefinition),
                     typeof (ContentTypeLinkDefinition),
                     
+                    // Content type related provision should be done before list items provision #636
+                    // https://github.com/SubPointSolutions/spmeta2/issues/636
+                    typeof (RemoveContentTypeLinksDefinition),
+                    typeof (HideContentTypeLinksDefinition),
+                    typeof (UniqueContentTypeOrderDefinition),
+
                     // field and field links could be added with 'AddToAllContentTypes' options
                     // we need content types deployed first
                     typeof (FieldDefinition),
+                    typeof (LookupFieldDefinition),
+                    typeof (DependentLookupFieldDefinition),
+
                     typeof (ListFieldLinkDefinition),
 
                     typeof (SP2013WorkflowSubscriptionDefinition),
@@ -116,28 +126,55 @@ namespace SPMeta2.Common
                 typeof(WebDefinition),
                 new[]
                 {
+                    typeof(ClearRecycleBinDefinition),
+
+                    // AppDefinition should be deployed before pages #628
+                    // https://github.com/SubPointSolutions/spmeta2/issues/628
+                    typeof (AppDefinition),
+                    
                     typeof (FeatureDefinition),
 
+                    // Incorrect provision order for SecurityGroup / SecurityRole #1017
+                    // https://github.com/SubPointSolutions/spmeta2/issues/1017
+                    typeof (SecurityRoleDefinition),
                     typeof (SecurityGroupDefinition),
 
                     typeof (BreakRoleInheritanceDefinition),
                     typeof (ResetRoleInheritanceDefinition),
 
                     typeof (SecurityRoleLinkDefinition),
-
+                    typeof (AnonymousAccessSettingsDefinition),
+                    
                     typeof (PropertyDefinition),
                     
                     typeof (FieldDefinition),
+                    typeof (LookupFieldDefinition),
+                    typeof (DependentLookupFieldDefinition),
+
                     typeof (ContentTypeDefinition),
-                    
                     typeof (SP2013WorkflowDefinition),
                     
                     typeof (ListDefinition),
+
                     // goes after list definitions to make sure you get history/task lists 
                     typeof (SP2013WorkflowSubscriptionDefinition),
+                    typeof (WorkflowAssociationDefinition),
 
                     typeof (MasterPageSettingsDefinition),
-                    typeof (WelcomePageDefinition)
+                    typeof (WelcomePageDefinition),
+
+                    typeof (WebDefinition),
+
+                    // moved navigation provision after lists
+                    // cause adding libraries would trigger 'Recent' link
+                    // https://github.com/SubPointSolutions/spmeta2/issues/865
+
+                    // removing navigation first, then add
+                    typeof (DeleteQuickLaunchNavigationNodesDefinition),
+                    typeof (DeleteTopNavigationNodesDefinition),
+                    
+                    typeof (QuickLaunchNavigationNodeDefinition),
+                    typeof (TopNavigationNodeDefinition),
                 }));
         }
 
@@ -153,12 +190,17 @@ namespace SPMeta2.Common
                     
                     typeof (PropertyDefinition),
 
-                    typeof (SecurityGroupDefinition),
+                    // Incorrect provision order for SecurityGroup / SecurityRole #1017
+                    // https://github.com/SubPointSolutions/spmeta2/issues/1017
                     typeof (SecurityRoleDefinition),
+                    typeof (SecurityGroupDefinition),
 
                     typeof (UserCustomActionDefinition),
 
                     typeof (FieldDefinition),
+                    typeof (LookupFieldDefinition),
+                    typeof (DependentLookupFieldDefinition),
+
                     typeof (ContentTypeDefinition),
                     
                     typeof (WebDefinition)

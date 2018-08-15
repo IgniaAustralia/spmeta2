@@ -1,15 +1,11 @@
-﻿using SPMeta2.Attributes;
+﻿using System;
+using System.Runtime.Serialization;
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
+using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using SPMeta2.Definitions.Base;
 using SPMeta2.Enumerations;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
-using SPMeta2.Attributes.Identity;
 
 namespace SPMeta2.Definitions
 {
@@ -18,16 +14,20 @@ namespace SPMeta2.Definitions
     /// </summary>
     /// 
 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPField", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Field", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPField", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.Field", "Microsoft.SharePoint.Client")]
 
-    [DefaultRootHostAttribute(typeof(WebDefinition))]
-    [DefaultParentHostAttribute(typeof(ListDefinition))]
+    [DefaultRootHost(typeof(WebDefinition))]
+    [DefaultParentHost(typeof(ListDefinition))]
 
-    [Serializable] 
+    [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
+
+    [ParentHostCapability(typeof(ListDefinition))]
+
+    [ExpectManyInstances]
 
     public class ListFieldLinkDefinition : DefinitionBase
     {
@@ -42,10 +42,16 @@ namespace SPMeta2.Definitions
         /// 
 
         [ExpectValidation]
-        [ExpectRequired]
+        [ExpectRequired(GroupName = "FieldIdOrName")]
         [DataMember]
         [IdentityKey]
-        public Guid FieldId { get; set; }
+        public Guid? FieldId { get; set; }
+
+        [ExpectValidation]
+        [ExpectRequired(GroupName = "FieldIdOrName")]
+        [DataMember]
+        [IdentityKey]
+        public string FieldInternalName { get; set; }
 
         [ExpectValidation]
         [DataMember]

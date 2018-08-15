@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Runtime.Serialization;
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using SPMeta2.Definitions.Base;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -12,23 +12,25 @@ namespace SPMeta2.Definitions
     /// </summary>
     /// 
 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPRoleAssignment", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.RoleAssignment", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPRoleAssignment", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.RoleAssignment", "Microsoft.SharePoint.Client")]
 
-    [DefaultRootHostAttribute(typeof(WebDefinition))]
-    [DefaultParentHostAttribute(typeof(BreakRoleInheritanceDefinition))]
+    [DefaultRootHost(typeof(WebDefinition))]
+    [DefaultParentHost(typeof(BreakRoleInheritanceDefinition))]
     [ExpectWithExtensionMethod]
 
     [Serializable]
     [DataContract]
 
+    [ParentHostCapability(typeof(WebDefinition))]
+    [ParentHostCapability(typeof(ListDefinition))]
+    [ParentHostCapability(typeof(FolderDefinition))]
+    [ParentHostCapability(typeof(ListItemDefinition))]
+
+    [ExpectManyInstances]
+
     public class SecurityGroupLinkDefinition : DefinitionBase
     {
-        public SecurityGroupLinkDefinition()
-        {
-
-        }
-
         #region properties
 
         /// <summary>

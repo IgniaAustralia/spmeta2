@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Linq;
-using System.Text;
-
 
 namespace SPMeta2.Utils
 {
@@ -82,6 +77,14 @@ namespace SPMeta2.Utils
         {
             if (value == null) return null;
             if (value is bool) return (bool)value;
+
+            var stringValue = value.ToString();
+
+            if (stringValue == "1")
+                return true;
+
+            if (stringValue == "0")
+                return false;
 
             bool tmpBool;
 

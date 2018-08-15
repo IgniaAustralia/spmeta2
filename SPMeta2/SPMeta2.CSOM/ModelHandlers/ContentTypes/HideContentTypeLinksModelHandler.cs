@@ -7,6 +7,7 @@ using SPMeta2.CSOM.ModelHandlers.ContentTypes.Base;
 using SPMeta2.Definitions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.Definitions.ContentTypes;
+using SPMeta2.Services;
 using SPMeta2.Utils;
 
 namespace SPMeta2.CSOM.ModelHandlers.ContentTypes
@@ -38,7 +39,16 @@ namespace SPMeta2.CSOM.ModelHandlers.ContentTypes
         {
             var context = folder.Context;
 
-            context.Load(list, l => l.ContentTypes);
+            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Fetching list content types and the order");
+
+            context.Load(list, l => l.ContentTypes.Include(
+               ct => ct.Id,
+               ct => ct.Name,
+               ct => ct.ReadOnly,
+
+               ct => ct.Parent.Id
+               ));
+
             context.Load(folder, f => f.ContentTypeOrder);
 
             context.ExecuteQueryWithTrace();
@@ -59,23 +69,67 @@ namespace SPMeta2.CSOM.ModelHandlers.ContentTypes
                 ModelHost = modelHost
             });
 
+            TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Reordeging list content types");
+
             // re-order
             foreach (var srcContentTypeDef in contentTypeOrderDefinition.ContentTypes)
             {
                 ContentType listContentType = null;
 
                 if (!string.IsNullOrEmpty(srcContentTypeDef.ContentTypeName))
-                    listContentType = listContentTypes.FirstOrDefault(c => c.Name == srcContentTypeDef.ContentTypeName);
+                {
+                    listContentType = listContentTypes.FirstOrDefault(c => c.Name.ToUpper() == srcContentTypeDef.ContentTypeName.ToUpper());
+
+                    if (listContentType != null)
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                            string.Format("Found content type by name:[{0}]", srcContentTypeDef.ContentTypeName));
+                    }
+                }
 
                 if (listContentType == null && !string.IsNullOrEmpty(srcContentTypeDef.ContentTypeId))
-                    listContentType = listContentTypes.FirstOrDefault(c => c.Id.ToString().ToUpper().StartsWith(srcContentTypeDef.ContentTypeId.ToUpper()));
+                {
+                    foreach (var contentType in list.ContentTypes)
+                    {
+                        if (contentType.Parent.Id.ToString().ToUpper() == srcContentTypeDef.ContentTypeId.ToUpper())
+                        {
+                            listContentType = contentType;
+                            break;
+                        }
+                    }
+
+                    if (listContentType != null)
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                            string.Format("Found content type by matching ID start:[{0}]", srcContentTypeDef.ContentTypeId));
+                    }
+                }
 
                 if (listContentType != null)
                 {
-                    var existingCt = newContentTypeOrder.FirstOrDefault(ct => ct.StringValue == listContentType.StringId);
+#if !NET35
+
+                    var existingCt = newContentTypeOrder.FirstOrDefault(ct => ct.ToString().ToUpper() == listContentType.Id.ToString().ToUpper());
 
                     if (existingCt != null && newContentTypeOrder.Contains(existingCt))
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, string.Format("Removing content type from the ordering"));
                         newContentTypeOrder.Remove(existingCt);
+                    }
+
+#endif
+
+#if NET35
+                    // .ToString() should return .StringValue of the content type ID
+                    var existingCt = newContentTypeOrder.FirstOrDefault(ct => ct.ToString().ToUpper() == listContentType.ToString().ToUpper());
+
+                    if (existingCt != null && newContentTypeOrder.Contains(existingCt))
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, string.Format("Removing content type from the ordering"));
+                        newContentTypeOrder.Remove(existingCt);
+                    }
+#endif
+
                 }
             }
 

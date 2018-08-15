@@ -1,12 +1,10 @@
-﻿using SPMeta2.Attributes;
-using SPMeta2.Attributes.Regression;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using SPMeta2.Utils;
 using System.Runtime.Serialization;
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
+using SPMeta2.Attributes.Regression;
+using SPMeta2.Utils;
 
 namespace SPMeta2.Definitions
 {
@@ -21,49 +19,23 @@ namespace SPMeta2.Definitions
     [DefaultRootHost(typeof(SiteDefinition))]
     [DefaultParentHost(typeof(ListDefinition), typeof(RootWebDefinition))]
 
-    [Serializable] 
+    [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
 
-    public class MasterPageDefinition : PageDefinitionBase
+    [ParentHostCapability(typeof(ListDefinition))]
+
+    [ExpectManyInstances]
+
+    public class MasterPageDefinition : MasterPageDefinitionBase
     {
         #region constructors
 
         public MasterPageDefinition()
         {
-            UIVersion = new List<string>();
-            Content = new byte[0];
-            NeedOverride = true;
 
-            UIVersion.Add("15");
         }
-
-        #endregion
-
-        #region properties
-
-        [ExpectValidation]
-        [ExpectUpdate]
-        [DataMember]
-        [ExpectNullable]
-        public string Description { get; set; }
-
-        [ExpectValidation]
-        [ExpectUpdate]
-        [DataMember]
-        public byte[] Content { get; set; }
-
-        [ExpectValidation]
-        [ExpectUpdate]
-        [DataMember]
-        [ExpectNullable]
-        public string DefaultCSSFile { get; set; }
-
-        [ExpectValidation]
-        [ExpectUpdateAsUIVersion]
-        [DataMember]
-        public List<string> UIVersion { get; set; }
 
         #endregion
 
@@ -72,8 +44,6 @@ namespace SPMeta2.Definitions
         public override string ToString()
         {
             return new ToStringResult<MasterPageDefinition>(this, base.ToString())
-                          .AddPropertyValue(p => p.Description)
-                          .AddPropertyValue(p => p.DefaultCSSFile)
                           .ToString();
         }
 

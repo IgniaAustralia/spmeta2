@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Runtime.Serialization;
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -13,8 +14,11 @@ namespace SPMeta2.Definitions
     [DefaultRootHost(typeof(WebDefinition))]
     [DefaultParentHost(typeof(ListDefinition))]
 
-    [Serializable] [DataContract]
+    [Serializable]
+    [DataContract]
 
+
+    [ParentHostCapability(typeof(ListDefinition))]
     public class InformationRightsManagementSettingsDefinition : DefinitionBase
     {
         #region properties
@@ -74,7 +78,7 @@ namespace SPMeta2.Definitions
         [ExpectValidation]
         [ExpectRequired]
         [DataMember]
-        [IdentityKeyAttribute]
+        [IdentityKey]
         public string PolicyTitle { get; set; }
 
         #endregion

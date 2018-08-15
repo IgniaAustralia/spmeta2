@@ -21,6 +21,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug\SPMeta2.Standard.XML</DocumentationFile>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <NoWarn>1591</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,7 +33,8 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug35|AnyCPU'">
+  <!-- m2 build start -->
+  <PropertyGroup Condition="('$(Configuration)|$(Platform)' == 'Debug35|AnyCPU') and ('$(spRuntime)' != '')">
     <OutputPath>bin\Debug35\</OutputPath>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <DebugSymbols>true</DebugSymbols>
@@ -42,7 +46,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <DocumentationFile>bin\Debug35\SPMeta2.Standard.XML</DocumentationFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug40|AnyCPU'">
+  <PropertyGroup Condition="('$(Configuration)|$(Platform)' == 'Debug40|AnyCPU') and ('$(spRuntime)' != '')">
     <OutputPath>bin\Debug40\</OutputPath>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <DebugSymbols>true</DebugSymbols>
@@ -54,7 +58,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <DocumentationFile>bin\Debug40\SPMeta2.Standard.XML</DocumentationFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug45|AnyCPU'">
+  <PropertyGroup Condition="('$(Configuration)|$(Platform)' == 'Debug45|AnyCPU') and ('$(spRuntime)' != '')">
     <OutputPath>bin\Debug45\</OutputPath>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <DebugSymbols>true</DebugSymbols>
@@ -66,27 +70,24 @@
     <Prefer32Bit>false</Prefer32Bit>
     <DocumentationFile>bin\Debug45\SPMeta2.Standard.XML</DocumentationFile>
   </PropertyGroup>
+  <!-- m2 build end -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DocumentationFile>bin\Debug\SPMeta2.Standard.XML</DocumentationFile>
+  </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>SPMeta2.snk</AssemblyOriginatorKeyFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == '1212|AnyCPU'">
-    <OutputPath>bin\1212\</OutputPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug40|AnyCPU'">
-    <OutputPath>bin\Debug40\</OutputPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug45|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug45\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DocumentationFile>bin\Debug\SPMeta2.Standard.XML</DocumentationFile>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -99,12 +100,51 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BuiltInDefinitions\BuiltInPublishingFieldDefinitions.cs" />
+    <Compile Include="BuiltInDefinitions\BuiltInPublishingPages.cs" />
+    <Compile Include="Definitions\DesignPackageDefinition.cs" />
+    <Compile Include="Definitions\ProfileTypePropertyDefinition.cs" />
+    <Compile Include="Definitions\CorePropertyDefinition.cs" />
+    <Compile Include="Definitions\DocumentSetDefinition.cs" />
     <Compile Include="Definitions\Base\ReusableItemDefinitionBase.cs" />
+    <Compile Include="Definitions\DisplayTemplates\FilterDisplayTemplateDefinition.cs" />
+    <Compile Include="Definitions\ManagedPropertyDefinition.cs" />
+    <Compile Include="Definitions\MetadataNavigationSettingsDefinition.cs" />
     <Compile Include="Definitions\ReusableHTMLItemDefinition.cs" />
     <Compile Include="Definitions\ReusableTextItemDefinition.cs" />
+    <Compile Include="Definitions\Webparts\AdvancedSearchBoxDefinition.cs" />
+    <Compile Include="Definitions\Webparts\CategoryWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\CommunityAdminWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\CommunityJoinWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\DocumentSetContentsWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\DocumentSetPropertiesWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\MyMembershipWebPartDefinition.cs" />
     <Compile Include="Definitions\Webparts\ProjectSummaryWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\RefinementScriptWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\RSSAggregatorWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\SearchBoxScriptWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\SearchNavigationWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\SiteDocumentsDefinition.cs" />
+    <Compile Include="Definitions\Webparts\SocialCommentWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\TableOfContentsWebPartDefinition.cs" />
+    <Compile Include="Definitions\Webparts\TagCloudWebPartDefinition.cs" />
+    <Compile Include="Enumerations\BuiltInItemStyleNames.cs" />
     <Compile Include="Enumerations\BuiltInContentClass.cs" />
-    <Compile Include="Syntax\ContentBySearchWebPartSyntax.cs" />
+    <Compile Include="Enumerations\BuiltInCompatibleSearchDataTypes.cs" />
+    <Compile Include="Enumerations\BuiltInManagedDataType.cs" />
+    <Compile Include="Enumerations\BuiltInPropertyDataType.cs" />
+    <Compile Include="Services\Impl\Validation\DefaultPublishingPageDefinitionValidationService.cs" />
+    <Compile Include="Services\ServiceModelHandlers\PublishingPageDefinitionValidationModelHandler.cs" />
+    <Compile Include="Syntax\DesignPackageDefinitionSyntax.cs" />
+    <Compile Include="Syntax\ProfileTypePropertySyntax.cs" />
+    <Compile Include="Syntax\CorePropertyDefinitionSyntax.cs" />
+    <Compile Include="Syntax\DocumentSetDefinitionSyntax.cs" />
+    <Compile Include="Syntax\MetadataNavigationSettingsSyntax.cs" />
+    <Compile Include="Syntax\ReusableTextItemDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\AdvancedSearchBoxDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\CategoryWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\CommunityAdminWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\CommunityJoinWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\ContentBySearchWebPartSyntax.cs" />
     <Compile Include="Definitions\Base\ItemControlTemplateDefinitionBase.cs" />
     <Compile Include="Definitions\Base\TemplateDefinitionBase.cs" />
     <Compile Include="Definitions\CustomDocumentIdProviderDefinition.cs" />
@@ -152,43 +192,53 @@
     <Compile Include="Services\Webparts\ContentByQueryWebPart\SortByValue.cs" />
     <Compile Include="Services\Webparts\ContentByQueryWebPart\DataMappingValue.cs" />
     <Compile Include="Services\Webparts\ContentByQueryWebPart\DataMappingViewFieldValue.cs" />
-    <Compile Include="Syntax\ReusableItemDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ResultScriptWebPartDefinitionSyntax.cs" />
-    <Compile Include="Syntax\JavaScriptDisplayTemplateDefinitionSyntax.cs" />
-    <Compile Include="Syntax\SummaryLinkWebPartDefinitionSyntax.cs" />
-    <Compile Include="Syntax\HTMLFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ImageFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\LinkFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\SummaryLinkFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\MediaFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ItemDisplayTemplateDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ControlDisplayTemplateDefinitionSyntax.cs" />
+    <Compile Include="Syntax\DisplayTemplates\FilterDisplayTemplateDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\DocumentSetContentsWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\DocumentSetPropertiesWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\MyMembershipWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\RefinementScriptWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\ManagedPropertyDefinitionSyntax.cs" />
+    <Compile Include="Syntax\ReusableIHTMLtemDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\ResultScriptWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\DisplayTemplates\JavaScriptDisplayTemplateDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\RSSAggregatorWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SearchBoxScriptWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SearchNavigationWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SiteDocumentsDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SocialCommentWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SummaryLinkWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\HTMLFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\ImageFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\LinkFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\SummaryLinkFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\MediaFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\DisplayTemplates\ItemDisplayTemplateDefinitionSyntax.cs" />
+    <Compile Include="Syntax\DisplayTemplates\ControlDisplayTemplateDefinitionSyntax.cs" />
     <Compile Include="Syntax\SearchSettingsDefinitionSyntax.cs" />
     <Compile Include="Syntax\CustomDocumentIdProviderDefinitionSyntax.cs" />
     <Compile Include="Syntax\AudienceDefinitionSyntax.cs" />
     <Compile Include="Syntax\SearchResultDefinitionSyntax.cs" />
     <Compile Include="Syntax\SearchConfigurationDefinitionSyntax.cs" />
     <Compile Include="Syntax\PublishingPageLayoutDefinitionSyntax.cs" />
-    <Compile Include="Syntax\SiteFeedWebPartDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ContentByQueryWebPartDefinitionSyntax.cs" />
-    <Compile Include="Syntax\ContactFieldControlDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\SiteFeedWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\ContentByQueryWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\ContactFieldControlDefinitionSyntax.cs" />
     <Compile Include="Syntax\ImageRenditionDefinitionSyntax.cs" />
     <Compile Include="Syntax\PublishingPageDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyFieldDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyTermLabelDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyTermDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyTermGroupDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyTermSetDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TaxonomyTermStoreDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Fields\TaxonomyFieldDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Taxonomy\TaxonomyTermLabelDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Taxonomy\TaxonomyTermDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Taxonomy\TaxonomyTermGroupDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Taxonomy\TaxonomyTermSetDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Taxonomy\TaxonomyTermStoreDefinitionSyntax.cs" />
     <Compile Include="Syntax\PageLayoutAndSiteTemplateSettingsDefinitionSyntax.cs" />
-    <Compile Include="Syntax\TypedWebpartsDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\ProjectSummaryWebPartDefinitionSyntax.cs" />
     <Compile Include="Syntax\WebNavigationSettingsDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\TableOfContentsWebPartDefinitionSyntax.cs" />
+    <Compile Include="Syntax\Webparts\TagCloudWebPartDefinitionSyntax.cs" />
+    <Compile Include="Utils\TaxonomyUtility.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SPMeta2.Syntax.Default\SPMeta2.Syntax.Default.csproj">
-      <Project>{6F7E5D77-0A17-4409-BE8C-94389D276FA9}</Project>
-      <Name>SPMeta2.Syntax.Default</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SPMeta2\SPMeta2.csproj">
       <Project>{EE49D3FD-6180-40E6-829F-6831FF89DAC6}</Project>
       <Name>SPMeta2</Name>
@@ -197,7 +247,15 @@
   <ItemGroup>
     <None Include="SPMeta2.snk" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Syntax\Interfaces\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties BuildVersion_StartDate="2000/1/1" />
+    </VisualStudio>
+  </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

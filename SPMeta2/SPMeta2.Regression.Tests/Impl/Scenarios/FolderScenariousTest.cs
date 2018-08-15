@@ -35,7 +35,44 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
 
         #region default
 
-        protected void AttachFolderHierarchy(ModelNode node)
+        protected void AttachFolderHierarchyToFolder(FolderModelNode node)
+        {
+            node
+                .AddRandomFolder(rootFolder =>
+                {
+                    rootFolder
+                         .AddRandomFolder(subFolder =>
+                         {
+                             subFolder
+                                 .AddRandomFolder()
+                                 .AddRandomFolder();
+                         })
+                        .AddRandomFolder(subFolder =>
+                        {
+                            subFolder
+                                .AddRandomFolder()
+                                .AddRandomFolder();
+                        });
+                })
+                .AddRandomFolder(rootFolder =>
+                {
+                    rootFolder
+                        .AddRandomFolder(subFolder =>
+                        {
+                            subFolder
+                                .AddRandomFolder()
+                                .AddRandomFolder();
+                        })
+                       .AddRandomFolder(subFolder =>
+                       {
+                           subFolder
+                                .AddRandomFolder()
+                                .AddRandomFolder();
+                       });
+                });
+        }
+
+        protected void AttachFolderHierarchyToList(ListModelNode node)
         {
             node
                 .AddRandomFolder(rootFolder =>
@@ -86,11 +123,87 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                 {
                     web.AddRandomWeb(rndWeb =>
                     {
-                        rndWeb.AddList(listDef, list => AttachFolderHierarchy(list));
+                        rndWeb.AddList(listDef, list => AttachFolderHierarchyToList(list));
                     });
                 });
 
             TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Folders.ContentType")]
+        public void CanDeploy_FolderWithContentTypeId_InList()
+        {
+            var contentTypeDef = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>(def =>
+            {
+                def.ParentContentTypeId = BuiltInContentTypeId.Folder;
+            });
+
+            var listDef = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+            {
+                def.ContentTypesEnabled = true;
+                def.TemplateType = BuiltInListTemplateTypeId.GenericList;
+            });
+
+            var folderDef = ModelGeneratorService.GetRandomDefinition<FolderDefinition>(def =>
+            {
+                def.ContentTypeId = contentTypeDef.GetContentTypeId();
+                def.ContentTypeName = string.Empty;
+            });
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddContentType(contentTypeDef);
+            });
+
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddList(listDef, list =>
+                {
+                    list.AddContentTypeLink(contentTypeDef);
+                    list.AddFolder(folderDef);
+                });
+            });
+
+            TestModel(siteModel, webModel);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Folders.ContentType")]
+        public void CanDeploy_FolderWithContentTypeName_InList()
+        {
+            var contentTypeDef = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>(def =>
+            {
+                def.ParentContentTypeId = BuiltInContentTypeId.Folder;
+            });
+
+            var listDef = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+            {
+                def.ContentTypesEnabled = true;
+                def.TemplateType = BuiltInListTemplateTypeId.GenericList;
+            });
+
+            var folderDef = ModelGeneratorService.GetRandomDefinition<FolderDefinition>(def =>
+            {
+                def.ContentTypeId = string.Empty;
+                def.ContentTypeName = contentTypeDef.Name;
+            });
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddContentType(contentTypeDef);
+            });
+
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddList(listDef, list =>
+                {
+                    list.AddContentTypeLink(contentTypeDef);
+                    list.AddFolder(folderDef);
+                });
+            });
+
+            TestModel(siteModel, webModel);
         }
 
         [TestMethod]
@@ -107,11 +220,87 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                 {
                     web.AddRandomWeb(rndWeb =>
                     {
-                        rndWeb.AddList(listDef, list => AttachFolderHierarchy(list));
+                        rndWeb.AddList(listDef, list => AttachFolderHierarchyToList(list));
                     });
                 });
 
             TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Folders.ContentType")]
+        public void CanDeploy_FolderWithContentTypeId_InLibrary()
+        {
+            var contentTypeDef = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>(def =>
+            {
+                def.ParentContentTypeId = BuiltInContentTypeId.Folder;
+            });
+
+            var listDef = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+            {
+                def.ContentTypesEnabled = true;
+                def.TemplateType = BuiltInListTemplateTypeId.DocumentLibrary;
+            });
+
+            var folderDef = ModelGeneratorService.GetRandomDefinition<FolderDefinition>(def =>
+            {
+                def.ContentTypeId = contentTypeDef.GetContentTypeId();
+                def.ContentTypeName = string.Empty;
+            });
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddContentType(contentTypeDef);
+            });
+
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddList(listDef, list =>
+                {
+                    list.AddContentTypeLink(contentTypeDef);
+                    list.AddFolder(folderDef);
+                });
+            });
+
+            TestModel(siteModel, webModel);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Folders.ContentType")]
+        public void CanDeploy_FolderWithContentTypeName_InLibrary()
+        {
+            var contentTypeDef = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>(def =>
+            {
+                def.ParentContentTypeId = BuiltInContentTypeId.Folder;
+            });
+
+            var listDef = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+            {
+                def.ContentTypesEnabled = true;
+                def.TemplateType = BuiltInListTemplateTypeId.DocumentLibrary;
+            });
+
+            var folderDef = ModelGeneratorService.GetRandomDefinition<FolderDefinition>(def =>
+            {
+                def.ContentTypeId = string.Empty;
+                def.ContentTypeName = contentTypeDef.Name;
+            });
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddContentType(contentTypeDef);
+            });
+
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddList(listDef, list =>
+                {
+                    list.AddContentTypeLink(contentTypeDef);
+                    list.AddFolder(folderDef);
+                });
+            });
+
+            TestModel(siteModel, webModel);
         }
 
         #endregion

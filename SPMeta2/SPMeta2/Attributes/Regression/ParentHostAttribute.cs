@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 
 namespace SPMeta2.Attributes.Regression
 {
@@ -13,6 +10,8 @@ namespace SPMeta2.Attributes.Regression
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class DefaultParentHostAttribute : Attribute
     {
+        #region constructors
+
         public DefaultParentHostAttribute(Type hostType)
             : this(hostType, null)
         {
@@ -26,10 +25,16 @@ namespace SPMeta2.Attributes.Regression
 
             if (additionalHostTypes != null)
                 AdditionalHostTypes.AddRange(additionalHostTypes);
-        }
+        } 
+
+        #endregion
+
+        #region properties
 
         public Type HostType { get; set; }
-        public List<Type> AdditionalHostTypes { get; set; }
+        public List<Type> AdditionalHostTypes { get; set; } 
+
+        #endregion
     }
 
     /// <summary>
@@ -39,12 +44,20 @@ namespace SPMeta2.Attributes.Regression
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class DefaultRootHostAttribute : Attribute
     {
+        #region constructors
+
         public DefaultRootHostAttribute(Type hostType)
         {
             HostType = hostType;
-        }
+        } 
 
-        public Type HostType { get; set; }
+        #endregion
+
+        #region properties
+
+        public Type HostType { get; set; } 
+        
+        #endregion
     }
 
     /// <summary>

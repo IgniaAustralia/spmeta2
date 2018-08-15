@@ -1,5 +1,6 @@
 ﻿using Microsoft.SharePoint.Client;
 using SPMeta2.Containers.Assertion;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.Definitions;
 using SPMeta2.Utils;
@@ -24,7 +25,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
             context.Load(securableObject, s => s.RoleAssignments.Include(r => r.Member));
 
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
 
             var spObject = ResolveSecurityGroup(definition, web, context);
 
@@ -40,21 +41,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
             if (definition.IsAssociatedMemberGroup)
             {
-                assert.ShouldBeEqual((p, s, d) =>
-                {
-                    var srcProp = s.GetExpressionValue(m => m.IsAssociatedMemberGroup);
-                    var assosiatedMemberGroup = web.AssociatedMemberGroup;
-
-                    var isValid = spObject.Id == assosiatedMemberGroup.Id;
-
-                    return new PropertyValidationResult
-                    {
-                        Tag = p.Tag,
-                        Src = srcProp,
-                        //Dst = dstProp,
-                        IsValid = isValid
-                    };
-                });
+                assert.ShouldBeEqual(m => m.IsAssociatedMemberGroup, spObject.Id == web.AssociatedMemberGroup.Id);
             }
             else
             {
@@ -63,21 +50,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
             if (definition.IsAssociatedOwnerGroup)
             {
-                assert.ShouldBeEqual((p, s, d) =>
-                {
-                    var srcProp = s.GetExpressionValue(m => m.IsAssociatedOwnerGroup);
-                    var assosiatedOwnerGroup = web.AssociatedOwnerGroup;
-
-                    var isValid = spObject.Id == assosiatedOwnerGroup.Id;
-
-                    return new PropertyValidationResult
-                    {
-                        Tag = p.Tag,
-                        Src = srcProp,
-                        //Dst = dstProp,
-                        IsValid = isValid
-                    };
-                });
+                assert.ShouldBeEqual(m => m.IsAssociatedOwnerGroup, spObject.Id == web.AssociatedOwnerGroup.Id);
             }
             else
             {
@@ -86,21 +59,7 @@ namespace SPMeta2.Regression.CSOM.Validation
 
             if (definition.IsAssociatedVisitorGroup)
             {
-                assert.ShouldBeEqual((p, s, d) =>
-                {
-                    var srcProp = s.GetExpressionValue(m => m.IsAssociatedVisitorGroup);
-                    var assosiatedVisitorGroup = web.AssociatedVisitorGroup;
-
-                    var isValid = spObject.Id == assosiatedVisitorGroup.Id;
-
-                    return new PropertyValidationResult
-                    {
-                        Tag = p.Tag,
-                        Src = srcProp,
-                        //Dst = dstProp,
-                        IsValid = isValid
-                    };
-                });
+                assert.ShouldBeEqual(m => m.IsAssociatedVisitorGroup, spObject.Id == web.AssociatedVisitorGroup.Id);
             }
             else
             {
@@ -118,21 +77,4 @@ namespace SPMeta2.Regression.CSOM.Validation
         }
     }
 
-    //internal static class SPGroupLinkExtensions
-    //{
-    //    public static Group GetAssociatedVisitorGroup(this Group group)
-    //    {
-    //        return group.we.AssociatedVisitorGroup;
-    //    }
-
-    //    public static SPGroup GetAssociatedOwnerGroup(this SPGroup group)
-    //    {
-    //        return group.ParentWeb.AssociatedOwnerGroup;
-    //    }
-
-    //    public static SPGroup GetAssociatedMemberGroup(this SPGroup group)
-    //    {
-    //        return group.ParentWeb.AssociatedMemberGroup;
-    //    }
-    //}
 }

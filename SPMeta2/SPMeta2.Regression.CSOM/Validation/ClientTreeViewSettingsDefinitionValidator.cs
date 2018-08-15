@@ -1,4 +1,5 @@
-﻿using SPMeta2.CSOM.ModelHandlers;
+﻿using SPMeta2.CSOM.Extensions;
+using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.ModelHosts;
 using SPMeta2.Definitions;
 using SPMeta2.Utils;
@@ -16,21 +17,15 @@ namespace SPMeta2.Regression.CSOM.Validation
             var context = spObject.Context;
 
             context.Load(spObject);
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
 
-            var assert = ServiceFactory.AssertService
-                               .NewAssert(definition, spObject)
-                               .ShouldNotBeNull(spObject);
+            var assert = ServiceFactory.AssertService.NewAssert(definition, spObject);
 
-            if (definition.QuickLaunchEnabled.HasValue)
-                assert.ShouldBeEqual(m => m.QuickLaunchEnabled, o => o.QuickLaunchEnabled);
-            else
-                assert.SkipProperty(m => m.QuickLaunchEnabled, "QuickLaunchEnabled is NULL. Skipping.");
+            assert
+                .ShouldNotBeNull(spObject)
 
-            if (definition.TreeViewEnabled.HasValue)
-                assert.ShouldBeEqual(m => m.TreeViewEnabled, o => o.TreeViewEnabled);
-            else
-                assert.SkipProperty(m => m.TreeViewEnabled, "TreeViewEnabled is NULL. Skipping.");
+                .ShouldBeEqualIfHasValue(m => m.QuickLaunchEnabled, o => o.QuickLaunchEnabled)
+                .ShouldBeEqualIfHasValue(m => m.TreeViewEnabled, o => o.TreeViewEnabled);
         }
     }
 }

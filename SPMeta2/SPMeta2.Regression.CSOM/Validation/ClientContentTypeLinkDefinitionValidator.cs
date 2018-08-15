@@ -6,7 +6,7 @@ using SPMeta2.Definitions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.Utils;
 
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHosts;
 
 
@@ -23,9 +23,15 @@ namespace SPMeta2.Regression.CSOM.Validation
             var context = list.Context;
 
             context.Load(list, l => l.ContentTypesEnabled);
-            context.Load(list, l => l.ContentTypes);
+            context.Load(list, l => l.ContentTypes.Include(
+                    ct => ct.Id,
+                    ct => ct.StringId,
+                    ct => ct.Name,
 
-            context.ExecuteQuery();
+                    ct => ct.Parent.Id,
+                    ct => ct.Parent.StringId));
+
+            context.ExecuteQueryWithTrace();
 
             var spObject = FindListContentType(list, definition);
 

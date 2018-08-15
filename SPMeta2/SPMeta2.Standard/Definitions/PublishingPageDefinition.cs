@@ -4,6 +4,7 @@ using SPMeta2.Attributes.Regression;
 using SPMeta2.Definitions;
 using SPMeta2.Utils;
 using System.Runtime.Serialization;
+using SPMeta2.Attributes.Capabilities;
 
 namespace SPMeta2.Standard.Definitions
 {
@@ -20,10 +21,14 @@ namespace SPMeta2.Standard.Definitions
     [DefaultParentHost(typeof(ListDefinition))]
 
     [ExpectAddHostExtensionMethod]
-    [Serializable] 
+    [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
+
+    [ParentHostCapability(typeof(ListDefinition))]
+
+    [ExpectManyInstances]
 
     public class PublishingPageDefinition : PageDefinitionBase
     {
@@ -48,11 +53,6 @@ namespace SPMeta2.Standard.Definitions
         [DataMember]
         [ExpectNullable]
         public string Description { get; set; }
-
-        [ExpectValidation]
-        [DataMember]
-        [ExpectNullable]
-        public string ContentTypeName { get; set; }
 
         /// <summary>
         /// Content of the target publishing page.

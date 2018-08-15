@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-
+﻿// ReSharper disable InconsistentNaming
 namespace SPMeta2.Enumerations
 {
     /// <summary>
@@ -3507,6 +3502,12 @@ namespace SPMeta2.Enumerations
         /// Corresponds to built-in field with Title [Target Web Part], ID [4499086f-9ac1-41df-86c3-d8c1f8fc769a] and Group: [_Hidden]'
         /// </summary>
         public static string XSLStyleWPType = "XSLStyleWPType";
+
+        #endregion
+
+        #region manually added
+
+        
 
         #endregion
     }

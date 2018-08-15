@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Microsoft.SharePoint.Client;
 using Microsoft.SharePoint.Client.Taxonomy;
 using SPMeta2.Common;
@@ -7,10 +6,12 @@ using SPMeta2.CSOM.Extensions;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.Standard.ModelHosts;
 using SPMeta2.Definitions;
-using SPMeta2.Definitions.Base;
 using SPMeta2.Services;
 using SPMeta2.Standard.Definitions.Taxonomy;
 using SPMeta2.Utils;
+using SPMeta2.Exceptions;
+using System.Threading;
+using SPMeta2.ModelHosts;
 
 namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
 {
@@ -33,21 +34,66 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
             var groupModel = model.WithAssertAndCast<TaxonomyTermGroupDefinition>("model", value => value.RequireNotNull());
 
             DeployTaxonomyGroup(modelHost, siteModelHost, groupModel);
+            SharePointOnlineWait(siteModelHost, groupModel);
         }
 
-        public override void WithResolvingModelHost(object modelHost, DefinitionBase model, Type childModelType, Action<object> action)
+        private void SharePointOnlineWait(TermStoreModelHost siteModelHost, TaxonomyTermGroupDefinition groupModel)
         {
+            // wait until the group is there
+            // Nested terms provisioning in Office 365 fails #995
+            // TermSet not found #994
+            var context = siteModelHost.HostClientContext;
+
+            if (IsSharePointOnlineContext(context))
+            {
+                var currentGroup = FindGroup(siteModelHost, groupModel);
+
+                if (currentGroup == null)
+                {
+                    TryRetryService.TryWithRetry(() =>
+                    {
+                        currentGroup = FindGroup(siteModelHost, groupModel);
+                        return currentGroup != null;
+                    });
+                }
+
+                if (currentGroup == null)
+                    throw new SPMeta2Exception(string.Format("Cannot find a taxonomy group after provision"));
+            }
+        }
+
+        public override void WithResolvingModelHost(ModelHostResolveContext modelHostContext)
+        {
+            var modelHost = modelHostContext.ModelHost;
+            var model = modelHostContext.Model;
+            var childModelType = modelHostContext.ChildModelType;
+            var action = modelHostContext.Action;
+
             var storeModelHost = modelHost.WithAssertAndCast<TermStoreModelHost>("modelHost", value => value.RequireNotNull());
             var groupModel = model.WithAssertAndCast<TaxonomyTermGroupDefinition>("model", value => value.RequireNotNull());
+
+            var context = storeModelHost.HostClientContext;
 
             var termStore = storeModelHost.HostTermStore;
             var currentGroup = FindGroup(storeModelHost, groupModel);
 
-            action(new TermGroupModelHost
+            if (currentGroup == null && IsSharePointOnlineContext(context))
             {
-                HostTermStore = termStore,
-                HostGroup = currentGroup
-            });
+                TryRetryService.TryWithRetry(() =>
+                {
+                    currentGroup = FindGroup(storeModelHost, groupModel);
+                    return currentGroup != null;
+                });
+            }
+
+            if (currentGroup == null)
+                throw new SPMeta2Exception(string.Format("Cannot find a taxonomy group after provision"));
+
+            action(ModelHostBase.Inherit<TermGroupModelHost>(storeModelHost, host =>
+            {
+                host.HostTermStore = termStore;
+                host.HostGroup = currentGroup;
+            }));
         }
 
         protected TermGroup FindSiteCollectionGroup(TermStoreModelHost storeModelHost, TaxonomyTermGroupDefinition groupModel)
@@ -57,10 +103,10 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
 
             var context = termStore.Context;
 
-            TermGroup currentGroup = termStore.GetSiteCollectionGroup(site, false);
+            TermGroup currentGroup = termStore.GetSiteCollectionGroup(site, true);
 
             context.Load(currentGroup);
-            context.ExecuteQuery();
+            context.ExecuteQueryWithTrace();
             return currentGroup;
         }
 
@@ -114,7 +160,9 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
 
             context.ExecuteQueryWithTrace();
 
-            if (currentGroup != null && currentGroup.ServerObjectIsNull == false)
+            if (currentGroup != null
+                && currentGroup.ServerObjectIsNull.HasValue
+                && currentGroup.ServerObjectIsNull == false)
             {
                 context.Load(currentGroup, g => g.Id);
                 context.Load(currentGroup, g => g.Name);
@@ -151,6 +199,9 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
                                         ? termStore.CreateGroup(groupModel.Name, groupModel.Id.Value)
                                         : termStore.CreateGroup(groupModel.Name, Guid.NewGuid());
 
+                if (!string.IsNullOrEmpty(groupModel.Description))
+                    currentGroup.Description = groupModel.Description;
+
                 InvokeOnModelEvent(this, new ModelEventArgs
                 {
                     CurrentModelNode = null,
@@ -161,26 +212,81 @@ namespace SPMeta2.CSOM.Standard.ModelHandlers.Taxonomy
                     ObjectDefinition = groupModel,
                     ModelHost = modelHost
                 });
-
             }
             else
             {
-                TraceService.Information((int)LogEventId.ModelProvisionProcessingExistingObject, "Processing existing Term Group");
-
-                InvokeOnModelEvent(this, new ModelEventArgs
-                {
-                    CurrentModelNode = null,
-                    Model = null,
-                    EventType = ModelEventType.OnProvisioned,
-                    Object = currentGroup,
-                    ObjectType = typeof(TermGroup),
-                    ObjectDefinition = groupModel,
-                    ModelHost = modelHost
-                });
+                UpdateExistingTaxonomyGroup(modelHost, groupModel, currentGroup);
             }
 
             termStore.CommitAll();
-            termStore.Context.ExecuteQuery();
+
+            termStore.Groups.RefreshLoad();
+            termStore.RefreshLoad();
+
+            try
+            {
+                termStore.Context.ExecuteQueryWithTrace();
+            }
+            catch (Exception e)
+            {
+                var context = siteModelHost.HostClientContext;
+
+                if (!IsSharePointOnlineContext(context))
+                    throw;
+
+                // SPMeta2 Provisioning Taxonomy Group with CSOM Standard #959
+                // https://github.com/SubPointSolutions/spmeta2/issues/959
+
+                // seems that newly created group might not be available for the time being
+                // handling that "Group names must be unique." exception
+                // trying to find the group and only update description
+                var serverException = e as ServerException;
+
+                if (serverException != null
+                    && serverException.ServerErrorCode == -2147024809)
+                {
+                    currentGroup = FindGroup(siteModelHost, groupModel);
+
+                    if (currentGroup == null)
+                    {
+                        TryRetryService.TryWithRetry(() =>
+                        {
+                            currentGroup = FindGroup(siteModelHost, groupModel);
+                            return currentGroup != null;
+                        });
+                    }
+
+                    UpdateExistingTaxonomyGroup(modelHost, groupModel, currentGroup);
+
+                    termStore.CommitAll();
+
+                    termStore.Groups.RefreshLoad();
+                    termStore.RefreshLoad();
+
+                    termStore.Context.ExecuteQueryWithTrace();
+                }
+            }
+
+            siteModelHost.ShouldUpdateHost = false;
+        }
+
+        private void UpdateExistingTaxonomyGroup(object modelHost, TaxonomyTermGroupDefinition groupModel, TermGroup currentGroup)
+        {
+            TraceService.Information((int)LogEventId.ModelProvisionProcessingExistingObject, "Processing existing Term Group");
+
+            if (!string.IsNullOrEmpty(groupModel.Description))
+                currentGroup.Description = groupModel.Description;
+
+            InvokeOnModelEvent(this, new ModelEventArgs
+            {
+                CurrentModelNode = null,
+                Model = null,
+                EventType = ModelEventType.OnProvisioned,
+                Object = currentGroup,
+                ObjectType = typeof(TermGroup),
+                ObjectDefinition = groupModel,
+                ModelHost = modelHost
+            });
         }
 
         #endregion

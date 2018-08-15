@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using SPMeta2.Attributes;
 using SPMeta2.Attributes.Identity;
@@ -8,6 +8,7 @@ using SPMeta2.Definitions.Base;
 using SPMeta2.Standard.Definitions.Taxonomy;
 using SPMeta2.Utils;
 using System.Runtime.Serialization;
+using SPMeta2.Attributes.Capabilities;
 
 namespace SPMeta2.Standard.Definitions
 {
@@ -20,6 +21,8 @@ namespace SPMeta2.Standard.Definitions
     [Serializable]
     [DataContract]
     [SingletonIdentity]
+
+    [ParentHostCapability(typeof(WebDefinition))]
     public class WebNavigationSettingsDefinition : DefinitionBase
     {
         #region constructors
@@ -39,12 +42,16 @@ namespace SPMeta2.Standard.Definitions
         public bool? DisplayShowHideRibbonAction { get; set; }
 
         [DataMember]
+        [ExpectValidation]
         public bool? AddNewPagesToNavigation { get; set; }
 
         [DataMember]
+        [ExpectValidation]
         public bool? CreateFriendlyUrlsForNewPages { get; set; }
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectRequired(GroupName = "NavigationSource")]
         public string GlobalNavigationSource { get; set; }
 
         #region global navigation term store support
@@ -77,6 +84,8 @@ namespace SPMeta2.Standard.Definitions
         #endregion
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectRequired(GroupName = "NavigationSource")]
         public string CurrentNavigationSource { get; set; }
 
         #region current navigation term store support
@@ -111,19 +120,33 @@ namespace SPMeta2.Standard.Definitions
         public bool? ResetToDefaults { get; set; }
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdate]
         public bool? GlobalNavigationShowPages { get; set; }
+
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdate]
         public bool? GlobalNavigationShowSubsites { get; set; }
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdateAsIntRange(MinValue = 5, MaxValue = 10)]
         public int? GlobalNavigationMaximumNumberOfDynamicItems { get; set; }
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdate]
         public bool? CurrentNavigationShowPages { get; set; }
+
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdate]
         public bool? CurrentNavigationShowSubsites { get; set; }
 
         [DataMember]
+        [ExpectValidation]
+        [ExpectUpdateAsIntRange(MinValue = 5, MaxValue = 10)]
         public int? CurrentNavigationMaximumNumberOfDynamicItems { get; set; }
 
         #endregion

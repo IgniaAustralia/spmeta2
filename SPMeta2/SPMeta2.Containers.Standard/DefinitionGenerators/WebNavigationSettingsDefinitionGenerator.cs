@@ -15,31 +15,32 @@ namespace SPMeta2.Containers.Standard.DefinitionGenerators
         {
             return WithEmptyDefinition(def =>
             {
+                def.CurrentNavigationSource = BuiltInStandardNavigationSources.PortalProvider;
+
                 def.CurrentNavigationMaximumNumberOfDynamicItems = Rnd.Int(15) + 1;
                 def.CurrentNavigationShowPages = Rnd.Bool();
                 def.CurrentNavigationShowSubsites = Rnd.Bool();
 
+                def.GlobalNavigationSource = BuiltInStandardNavigationSources.PortalProvider;
+
                 def.GlobalNavigationMaximumNumberOfDynamicItems = Rnd.Int(15) + 1;
                 def.GlobalNavigationShowPages = Rnd.Bool();
                 def.GlobalNavigationShowSubsites = Rnd.Bool();
-
-                // TODO, source
             });
         }
 
         public override IEnumerable<DefinitionBase> GetAdditionalArtifacts()
         {
-            var sitePublishing = BuiltInSiteFeatures.SharePointServerPublishingInfrastructure
-                               .Inherit(f =>
-                               {
-                                   f.Enable = true;
-                               });
+            var sitePublishing = BuiltInSiteFeatures.SharePointServerPublishingInfrastructure.Inherit(f =>
+            {
+                f.Enable = true;
+            });
 
-            var webPublishing = BuiltInWebFeatures.SharePointServerPublishing
-                              .Inherit(f =>
-                              {
-                                  f.Enable = true;
-                              });
+            var webPublishing = BuiltInWebFeatures.SharePointServerPublishing.Inherit(f =>
+            {
+                f.Enable = true;
+                f.ForceActivate = true;
+            });
 
             return new[] { sitePublishing, webPublishing };
         }

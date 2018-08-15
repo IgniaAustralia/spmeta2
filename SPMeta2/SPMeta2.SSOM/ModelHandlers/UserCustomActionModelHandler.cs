@@ -112,13 +112,29 @@ namespace SPMeta2.SSOM.ModelHandlers
         {
             TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Updating user custom action properties.");
 
-            existringAction.Description = customAction.Description;
             existringAction.Group = customAction.Group;
             existringAction.Location = customAction.Location;
             existringAction.Name = customAction.Name;
             existringAction.ScriptBlock = customAction.ScriptBlock;
             existringAction.ScriptSrc = customAction.ScriptSrc;
-            existringAction.Title = customAction.Title;
+
+            // fallback for old models
+            // fill out Title/Description with Name if NULLs
+            // that needs for SP2016 to work well with translation exports
+
+            // UserCustomAction without Title/Description breaks Translation Export #937
+            // https://github.com/SubPointSolutions/spmeta2/issues/937
+
+            if (!string.IsNullOrEmpty(customAction.Title))
+                existringAction.Title = customAction.Title;
+            else
+                existringAction.Title = customAction.Name;
+
+            if (!string.IsNullOrEmpty(customAction.Description))
+                existringAction.Description = customAction.Description;
+            else
+                existringAction.Description = customAction.Name;
+
             existringAction.Url = customAction.Url;
 
             existringAction.Sequence = customAction.Sequence;
@@ -150,6 +166,8 @@ namespace SPMeta2.SSOM.ModelHandlers
             }
 
             existringAction.Rights = permissions;
+
+            ProcessLocalization(existringAction, customAction);
         }
 
         private bool IsValidHostModelHost(object modelHost)
@@ -158,6 +176,27 @@ namespace SPMeta2.SSOM.ModelHandlers
                 modelHost is SiteModelHost ||
                 modelHost is WebModelHost ||
                 modelHost is ListModelHost;
+        }
+
+        protected virtual void ProcessLocalization(SPUserCustomAction obj, UserCustomActionDefinition definition)
+        {
+            if (definition.TitleResource.Any())
+            {
+                foreach (var locValue in definition.TitleResource)
+                    LocalizationService.ProcessUserResource(obj, obj.TitleResource, locValue);
+            }
+
+            if (definition.DescriptionResource.Any())
+            {
+                foreach (var locValue in definition.DescriptionResource)
+                    LocalizationService.ProcessUserResource(obj, obj.DescriptionResource, locValue);
+            }
+
+            if (definition.CommandUIExtensionResource.Any())
+            {
+                foreach (var locValue in definition.CommandUIExtensionResource)
+                    LocalizationService.ProcessUserResource(obj, obj.CommandUIExtensionResource, locValue);
+            }
         }
 
         #endregion

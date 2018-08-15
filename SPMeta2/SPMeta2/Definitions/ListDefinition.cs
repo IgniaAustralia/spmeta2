@@ -1,9 +1,11 @@
-﻿using SPMeta2.Attributes;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using SPMeta2.Definitions.Base;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -12,11 +14,11 @@ namespace SPMeta2.Definitions
     /// </summary>
     /// 
 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPList", "Microsoft.SharePoint")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.List", "Microsoft.SharePoint.Client")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.SPList", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.CSOM, "Microsoft.SharePoint.Client.List", "Microsoft.SharePoint.Client")]
 
-    [DefaultRootHostAttribute(typeof(WebDefinition))]
-    [DefaultParentHostAttribute(typeof(WebDefinition))]
+    [DefaultRootHost(typeof(WebDefinition))]
+    [DefaultParentHost(typeof(WebDefinition))]
 
     [ExpectAddHostExtensionMethod]
     [Serializable]
@@ -24,16 +26,22 @@ namespace SPMeta2.Definitions
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
 
+    [ParentHostCapability(typeof(WebDefinition))]
+
+    [ExpectManyInstances]
     public class ListDefinition : DefinitionBase
     {
         public ListDefinition()
         {
             Description = string.Empty;
             Hidden = false;
+
+            TitleResource = new List<ValueForUICulture>();
+            DescriptionResource = new List<ValueForUICulture>();
+            IndexedRootFolderPropertyKeys = new List<IndexedPropertyValue>();
         }
 
         #region properties
-
 
         /// <summary>
         /// Title of the target list.
@@ -44,6 +52,14 @@ namespace SPMeta2.Definitions
         [ExpectRequired]
         [DataMember]
         public string Title { get; set; }
+
+        /// <summary>
+        /// Corresponds to NameResource property
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public List<ValueForUICulture> TitleResource { get; set; }
 
         [ExpectValidation]
         [DataMember]
@@ -72,6 +88,14 @@ namespace SPMeta2.Definitions
         public string Description { get; set; }
 
         /// <summary>
+        /// Corresponds to DescriptionResource property
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public List<ValueForUICulture> DescriptionResource { get; set; }
+
+        /// <summary>
         /// URL of the target list.
         /// Don't use "list/my-list-name" as URL is calculated by TemplateType/TemplateName properties.
         /// Provision automatically adds '/lists/' if necessary.
@@ -83,6 +107,7 @@ namespace SPMeta2.Definitions
         [ExpectRequired(GroupName = "List Url")]
         [DataMember]
         [IdentityKey]
+        [Obsolete("Obsolete. Will be removed from the SPMeta2 API. Use CustomUrl property specifying URL web relative URL with/wihtout 'Lists' prefix as you need.")]
         public string Url { get; set; }
 
         /// <summary>
@@ -104,6 +129,7 @@ namespace SPMeta2.Definitions
         /// 
         [ExpectValidation]
         [ExpectRequired(GroupName = "List Template")]
+        //[ExpectRequiredIntRange(MinValue = 0, MaxValue = int.MaxValue)]
         [DataMember]
         public int TemplateType { get; set; }
 
@@ -194,7 +220,7 @@ namespace SPMeta2.Definitions
 
         /// <summary>
         /// The maximum number of major versions allowed for an item in a document library that uses version control with major versions only.
-        /// CSOM is not supported yet as M2 s build with SP2013 SP1+ assemblies.
+        /// M2 provisions that property if only current CSOM runtime provide support for that property.
         /// https://officespdev.uservoice.com/forums/224641-general/suggestions/6016131-majorversionlimit-majorwithminorversionslimit-pr
         /// </summary>
         [DataMember]
@@ -203,7 +229,7 @@ namespace SPMeta2.Definitions
 
         /// <summary>
         /// The maximum number of major versions that are allowed for an item in a document library that uses version control with both major and minor versions.
-        /// CSOM is not supported yet as M2 s build with SP2013 SP1+ assemblies.
+        /// M2 provisions that property if only current CSOM runtime provide support for that property.
         /// https://officespdev.uservoice.com/forums/224641-general/suggestions/6016131-majorversionlimit-majorwithminorversionslimit-pr
         /// </summary>
         [DataMember]
@@ -211,21 +237,195 @@ namespace SPMeta2.Definitions
 
         public int? MajorWithMinorVersionsLimit { get; set; }
 
+        /// <summary>
+        /// Corresponds to SPDocumentLibrary.DocumentTemplateUrl 
+        /// Should be server-relative URL of the document template for the list, but also supports tokens.
+        /// </summary>
+        [DataMember]
+        [ExpectValidation]
+
+        [SiteCollectionTokenCapability]
+        [WebTokenCapability]
+
+        [ExpectNullable]
+        //[ExpectUpdateAsServerRelativeUrl]
+        public string DocumentTemplateUrl { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [DataMember]
+        [ExpectValidation]
+        public List<IndexedPropertyValue> IndexedRootFolderPropertyKeys { get; set; }
+
+        [DataMember]
+        [ExpectValidation]
+        public int? WriteSecurity { get; set; }
+
+        [DataMember]
+        //[ExpectValidation]
+        public int? ReadSecurity { get; set; }
+
+        /// <summary>
+        /// Represents SPList.NavigateForFormsPages property.
+        /// Supported only with SSOM provision
+        /// https://github.com/SubPointSolutions/spmeta2/issues/752 
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public bool? NavigateForFormsPages { get; set; }
+
+        /// <summary>
+        /// Represents SPList.EnableAssignToEmail property.
+        /// Supported only with SSOM provision
+        /// https://github.com/SubPointSolutions/spmeta2/issues/1023
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public bool? EnableAssignToEmail { get; set; }
+
+        /// <summary>
+        /// Represents SPList.DisableGridEditing property.
+        /// Supported only with SSOM provision
+        /// https://github.com/SubPointSolutions/spmeta2/issues/1097
+        /// </summary>
+        [ExpectValidation]
+        [ExpectUpdate]
+        [DataMember]
+        public bool? DisableGridEditing { get; set; }
+
         #endregion
 
         #region methods
 
         public override string ToString()
         {
-            return string.Format("Title: [{0}] Url: [{1}] TemplateType:[{2}] TemplateName:[{3}]",
-                            new[] {
-                                Title,
-                                Url,
-                                TemplateType.ToString(),
-                                TemplateName                                
-                            });
+            return string.Format("Title: [{0}] Url: [{1}] ContentTypesEnabled:[{4}] TemplateType:[{2}] TemplateName:[{3}]",
+#pragma warning disable 618
+ Title, string.IsNullOrEmpty(Url) ? CustomUrl : Url, TemplateType, TemplateName, ContentTypesEnabled);
+#pragma warning restore 618
         }
 
         #endregion
     }
+
+
+    // ListDefinitionSyntax.GetListUrl() should be OM-independent #477
+    // https://github.com/SubPointSolutions/spmeta2/issues/477
+
+    //public static class ListDefinitionExtensions
+    //{
+    //    static ListDefinitionExtensions()
+    //    {
+    //        InitKnownListTypes();
+    //    }
+
+    //    private static void InitKnownListTypes()
+    //    {
+    //        // GenericList
+    //        KnownListTypes.Add(100);
+
+    //        // Survey
+    //        KnownListTypes.Add(102);
+
+    //        // Links
+    //        KnownListTypes.Add(103);
+
+    //        // Announcements
+    //        KnownListTypes.Add(104);
+
+    //        // Contacts
+    //        KnownListTypes.Add(105);
+
+    //        // Events
+    //        KnownListTypes.Add(106);
+
+    //        // Tasks
+    //        KnownListTypes.Add(107);
+
+    //        // DiscussionBoard
+    //        KnownListTypes.Add(108);
+
+    //        // DiscussionBoard
+    //        KnownListTypes.Add(108);
+
+    //        // SolutionCatalog
+    //        KnownListTypes.Add(121);
+
+    //        // WorkflowHistory
+    //        KnownListTypes.Add(140);
+
+    //        // WorkflowHistory
+    //        KnownListTypes.Add(140);
+
+    //        // GanttTasks
+    //        KnownListTypes.Add(150);
+
+    //        // HelpLibrary
+    //        KnownListTypes.Add(151);
+
+    //        // TasksWithTimelineAndHierarchy
+    //        KnownListTypes.Add(171);
+
+    //        // MaintenanceLogs
+    //        KnownListTypes.Add(175);
+
+    //        // Meetings
+    //        KnownListTypes.Add(200);
+
+    //        // Agenda
+    //        KnownListTypes.Add(201);
+
+    //        // MeetingUser
+    //        KnownListTypes.Add(202);
+
+    //        // Decision
+    //        KnownListTypes.Add(204);
+
+    //        // MeetingObjective
+    //        KnownListTypes.Add(207);
+
+    //        // TextBox
+    //        KnownListTypes.Add(210);
+
+    //        // ThingsToBring
+    //        KnownListTypes.Add(211);
+
+    //        // ThingsToBring
+    //        KnownListTypes.Add(211);
+
+    //        // ExternalList
+    //        KnownListTypes.Add(600);
+
+    //        // IssueTracking
+    //        KnownListTypes.Add(1100);
+
+    //        // AdminTasks
+    //        KnownListTypes.Add(1200);
+    //    }
+
+    //    public static List<int> KnownListTypes = new List<int>();
+
+    //    public static string GetListUrl(this ListDefinition listDefinition)
+    //    {
+    //        // don't change CustomUrl - suppoed to be the same
+    //        if (!string.IsNullOrEmpty(listDefinition.CustomUrl))
+    //            return listDefinition.CustomUrl;
+
+    //        // OOTB SharePoint sub fodlers
+    //        if (listDefinition.Url.ToUpper().Contains("_CATALOGS"))
+    //            return listDefinition.Url;
+
+    //        if (listDefinition.Url.ToUpper().Contains("LISTS"))
+    //            return listDefinition.Url;
+
+    //        // calculate URL based on the list type
+    //        if (KnownListTypes.Contains(listDefinition.TemplateType))
+    //            return string.Format("Lists/{0}", listDefinition.Url);
+
+    //        return listDefinition.Url;
+    //    }
+    //}
 }

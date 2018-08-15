@@ -1,10 +1,10 @@
-﻿using SPMeta2.Attributes;
+﻿using System;
+using System.Runtime.Serialization;
+using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using SPMeta2.Definitions.Base;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
 
 namespace SPMeta2.Definitions
 {
@@ -13,16 +13,26 @@ namespace SPMeta2.Definitions
     /// </summary>
     /// 
 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "System.Object", "mscorlib")]
-    [SPObjectTypeAttribute(SPObjectModelType.CSOM, "System.Object", "mscorlib")]
+    [SPObjectType(SPObjectModelType.SSOM, "System.Object", "mscorlib")]
+    [SPObjectType(SPObjectModelType.CSOM, "System.Object", "mscorlib")]
 
-    [DefaultRootHostAttribute(typeof(WebDefinition))]
-    [DefaultParentHostAttribute(typeof(WebDefinition))]
+    [DefaultRootHost(typeof(WebDefinition))]
+    [DefaultParentHost(typeof(WebDefinition))]
 
     [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
     [ExpectArrayExtensionMethod]
+
+
+    [ParentHostCapability(typeof(FarmDefinition))]
+    [ParentHostCapability(typeof(WebApplicationDefinition))]
+    [ParentHostCapability(typeof(SiteDefinition))]
+    [ParentHostCapability(typeof(WebDefinition))]
+    [ParentHostCapability(typeof(FolderDefinition))]
+    [ParentHostCapability(typeof(ListItemDefinition))]
+
+    [ExpectManyInstances]
 
     public class PropertyDefinition : DefinitionBase
     {

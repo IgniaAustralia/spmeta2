@@ -15,12 +15,13 @@ using SPMeta2.Standard.Definitions.Taxonomy;
 using SPMeta2.Standard.Definitions.Webparts;
 using SPMeta2.Utils;
 using System.Collections.Generic;
+using SPMeta2.Models;
 using SPMeta2.Syntax.Default;
 
 namespace SPMeta2.Regression.Tests.Impl.Dependencies
 {
     [TestClass]
-    public class ArtifactDependenciesTest : SPMeta2RegresionTestBase
+    public class ArtifactDependenciesTest : SPMeta2ProvisionRegresionTestBase
     {
         public ArtifactDependenciesTest()
         {
@@ -41,82 +42,82 @@ namespace SPMeta2.Regression.Tests.Impl.Dependencies
             InternalCleanup();
         }
 
-        [TestMethod]
-        [TestCategory("Regression.Dependencies")]
-        public void SiteFields_Before_SiteContentTypes()
-        {
-            var fieldDefinitionTypes = new List<Type>();
+        //[TestMethod]
+        //[TestCategory("Regression.Dependencies")]
+        //public void SiteFields_Before_SiteContentTypes()
+        //{
+        //    var fieldDefinitionTypes = new List<Type>();
 
-            // foundation defs
-            fieldDefinitionTypes.AddRange(ReflectionUtils.GetTypesFromAssembly<FieldDefinition>(typeof(FieldDefinition).Assembly));
+        //    // foundation defs
+        //    fieldDefinitionTypes.AddRange(ReflectionUtils.GetTypesFromAssembly<FieldDefinition>(typeof(FieldDefinition).Assembly));
 
-            // standard defs
-            fieldDefinitionTypes.AddRange(ReflectionUtils.GetTypesFromAssembly<FieldDefinition>(typeof(TaxonomyFieldDefinition).Assembly));
+        //    // standard defs
+        //    fieldDefinitionTypes.AddRange(ReflectionUtils.GetTypesFromAssembly<FieldDefinition>(typeof(TaxonomyFieldDefinition).Assembly));
 
-            var fieldDefinitions = new List<FieldDefinition>();
+        //    var fieldDefinitions = new List<FieldDefinition>();
 
-            foreach (var fieldDefinitionType in fieldDefinitionTypes)
-                fieldDefinitions.Add(ModelGeneratorService.GetRandomDefinition(fieldDefinitionType) as FieldDefinition);
+        //    foreach (var fieldDefinitionType in fieldDefinitionTypes)
+        //        fieldDefinitions.Add(ModelGeneratorService.GetRandomDefinition(fieldDefinitionType) as FieldDefinition);
 
-            var contentTypeDefinition = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>();
+        //    var contentTypeDefinition = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>();
 
-            var siteModel = SPMeta2Model
-                .NewSiteModel(site =>
-                {
-                    foreach (var fieldDefinition in fieldDefinitions)
-                        site.AddField(fieldDefinition);
+        //    var siteModel = SPMeta2Model
+        //        .NewSiteModel(site =>
+        //        {
+        //            foreach (var fieldDefinition in fieldDefinitions)
+        //                site.AddField(fieldDefinition);
 
-                    site.AddContentType(contentTypeDefinition, contentType =>
-                    {
-                        foreach (var fieldDefinition in fieldDefinitions)
-                            contentType.AddContentTypeFieldLink(fieldDefinition);
-                    });
-                });
+        //            site.AddContentType(contentTypeDefinition, contentType =>
+        //            {
+        //                foreach (var fieldDefinition in fieldDefinitions)
+        //                    contentType.AddContentTypeFieldLink(fieldDefinition);
+        //            });
+        //        });
 
-            TestModel(siteModel);
-        }
+        //    TestModel(siteModel);
+        //}
 
-        [TestMethod]
-        [TestCategory("Regression.Dependencies")]
-        public void ListContentTypes_Before_ListViews()
-        {
-            var siteField = ModelGeneratorService.GetRandomDefinition<FieldDefinition>();
-            var siteContentType = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>();
+        //[TestMethod]
+        //[TestCategory("Regression.Dependencies")]
+        //public void ListContentTypes_Before_ListViews()
+        //{
+        //    var siteField = ModelGeneratorService.GetRandomDefinition<FieldDefinition>();
+        //    var siteContentType = ModelGeneratorService.GetRandomDefinition<ContentTypeDefinition>();
 
-            var webList = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
-            {
-                def.ContentTypesEnabled = true;
-            });
-            var webListView = ModelGeneratorService.GetRandomDefinition<ListViewDefinition>(def =>
-            {
-                def.Fields = new Collection<string>
-                {
-                    siteField.InternalName
-                };
-            });
+        //    var webList = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+        //    {
+        //        def.ContentTypesEnabled = true;
+        //    });
+        //    var webListView = ModelGeneratorService.GetRandomDefinition<ListViewDefinition>(def =>
+        //    {
+        //        def.Fields = new Collection<string>
+        //        {
+        //            siteField.InternalName
+        //        };
+        //    });
 
-            var siteModel = SPMeta2Model
-                .NewSiteModel(site =>
-                {
-                    site.AddField(siteField);
-                    site.AddContentType(siteContentType, contentType =>
-                    {
-                        contentType.AddContentTypeFieldLink(siteField);
-                    });
-                });
+        //    var siteModel = SPMeta2Model
+        //        .NewSiteModel(site =>
+        //        {
+        //            site.AddField(siteField);
+        //            site.AddContentType(siteContentType, contentType =>
+        //            {
+        //                contentType.AddContentTypeFieldLink(siteField);
+        //            });
+        //        });
 
-            var webModel = SPMeta2Model
-               .NewWebModel(site =>
-               {
-                   site.AddList(webList, list =>
-                   {
-                       list.AddContentTypeLink(siteContentType);
-                       list.AddView(webListView);
-                   });
-               });
+        //    var webModel = SPMeta2Model
+        //       .NewWebModel(site =>
+        //       {
+        //           site.AddList(webList, list =>
+        //           {
+        //               list.AddContentTypeLink(siteContentType);
+        //               list.AddView(webListView);
+        //           });
+        //       });
 
-            TestModels(new[] { siteModel, webModel });
-        }
+        //    TestModels(new  ModelNode[] { siteModel, webModel });
+        //}
 
         protected void EnsureListFieldScopedWeigh()
         {
@@ -128,7 +129,7 @@ namespace SPMeta2.Regression.Tests.Impl.Dependencies
 
         [TestMethod]
         [TestCategory("Regression.Dependencies")]
-        public void ListFields_Before_ListViews()
+        public void CanDeploy_ListFields_Before_ListViews()
         {
             var useListScopedeFix = true;
 
@@ -158,11 +159,11 @@ namespace SPMeta2.Regression.Tests.Impl.Dependencies
                    site.AddList(webList, list =>
                    {
                        list.AddField(listField);
-                       list.AddView(webListView);
+                       list.AddListView(webListView);
                    });
                });
 
-            TestModels(new[] { webModel });
+            TestModels(new  ModelNode[] { webModel });
         }
 
         #endregion

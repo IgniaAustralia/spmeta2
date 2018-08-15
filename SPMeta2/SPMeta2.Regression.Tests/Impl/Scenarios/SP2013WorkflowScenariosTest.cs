@@ -7,7 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SPMeta2.BuiltInDefinitions;
 using SPMeta2.Containers;
 using SPMeta2.Containers.Standard;
-using SPMeta2.CSOM.DefaultSyntax;
+
 using SPMeta2.Definitions;
 using SPMeta2.Enumerations;
 using SPMeta2.Models;
@@ -16,6 +16,8 @@ using SPMeta2.Regression.Tests.Impl.Scenarios.Base;
 using SPMeta2.Standard.Definitions;
 using SPMeta2.Syntax.Default;
 using SPMeta2.Validation.Validators.Relationships;
+
+using SPMeta2.Regression.Tests.Extensions;
 
 namespace SPMeta2.Regression.Tests.Impl.Scenarios
 {
@@ -57,11 +59,10 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
         [TestCategory("Regression.Scenarios.SP2013Workflow")]
         public void CanDeploy_SP2013ListWorkflowAccosiation()
         {
-            var model = SPMeta2Model
-                .NewWebModel(web =>
-                {
-                    AddListWorkflow(web);
-                });
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                AddListWorkflow(web);
+            });
 
             TestModel(model);
         }
@@ -154,7 +155,9 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
             {
                 Title = Rnd.String(),
                 TemplateType = BuiltInListTemplateTypeId.Tasks,
+#pragma warning disable 618
                 Url = Rnd.String()
+#pragma warning restore 618
             };
         }
 
@@ -164,11 +167,13 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
             {
                 Title = Rnd.String(),
                 TemplateType = BuiltInListTemplateTypeId.WorkflowHistory,
+#pragma warning disable 618
                 Url = Rnd.String()
+#pragma warning restore 618
             };
         }
 
-        protected void AddWebWorkflow(ModelNode web)
+        protected void AddWebWorkflow(WebModelNode web)
         {
             var workflow = ModelGeneratorService.GetRandomDefinition<SP2013WorkflowDefinition>();
 
@@ -176,19 +181,21 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
             var taskList = GetTaskList();
 
             web
-                          .AddSP2013Workflow(workflow)
-                          .AddList(historyList)
-                          .AddList(taskList)
-                          .AddSP2013WorkflowSubscription(new SP2013WorkflowSubscriptionDefinition
-                          {
-                              Name = Rnd.String(),
-                              WorkflowDisplayName = workflow.DisplayName,
-                              HistoryListUrl = historyList.GetListUrl(),
-                              TaskListUrl = taskList.GetListUrl()
-                          });
+                .AddList(historyList)
+                .AddList(taskList)
+                .AddSP2013Workflow(workflow)
+                .AddSP2013WorkflowSubscription(new SP2013WorkflowSubscriptionDefinition
+                {
+                    Name = Rnd.String(),
+                    WorkflowDisplayName = workflow.DisplayName,
+#pragma warning disable 618
+                    HistoryListUrl = historyList.GetListUrl(),
+                    TaskListUrl = taskList.GetListUrl()
+#pragma warning restore 618
+                });
         }
 
-        protected void AddListWorkflow(ModelNode web)
+        protected void AddListWorkflow(WebModelNode web)
         {
             var workflow = ModelGeneratorService.GetRandomDefinition<SP2013WorkflowDefinition>();
             var workflowEnableList = ModelGeneratorService.GetRandomDefinition<ListDefinition>();
@@ -197,7 +204,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
             var taskList = GetTaskList();
 
             web
-                        .AddSP2013Workflow(workflow)
+
                         .AddList(historyList)
                         .AddList(taskList)
                         .AddList(workflowEnableList, list =>
@@ -206,10 +213,13 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                             {
                                 Name = Rnd.String(),
                                 WorkflowDisplayName = workflow.DisplayName,
+#pragma warning disable 618
                                 HistoryListUrl = historyList.GetListUrl(),
                                 TaskListUrl = taskList.GetListUrl()
+#pragma warning restore 618
                             });
-                        });
+                        })
+                        .AddSP2013Workflow(workflow);
         }
 
         #endregion

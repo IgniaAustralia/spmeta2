@@ -7,11 +7,15 @@ using SPMeta2.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
+using SPMeta2.Attributes.Regression;
+using SPMeta2.CSOM.Extensions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.Enumerations;
 using SPMeta2.Utils;
+using SPMeta2.Services;
 
 namespace SPMeta2.Regression.CSOM.Validation
 {
@@ -24,9 +28,11 @@ namespace SPMeta2.Regression.CSOM.Validation
             var listItemModelHost = modelHost.WithAssertAndCast<ListItemModelHost>("modelHost", value => value.RequireNotNull());
             var definition = model.WithAssertAndCast<WebPartDefinition>("model", value => value.RequireNotNull());
 
-            var pageItem = listItemModelHost.HostListItem;
+            var pageFile = listItemModelHost.HostFile;
+            var context = pageFile.Context;
 
-            var context = pageItem.Context;
+            context.Load(pageFile);
+            context.ExecuteQueryWithTrace();
 
             var siteServerUrl = listItemModelHost.HostSite.ServerRelativeUrl;
             var webUrl = listItemModelHost.HostWeb.Url;
@@ -36,9 +42,9 @@ namespace SPMeta2.Regression.CSOM.Validation
             if (siteServerUrl != "/")
                 serverUrl = context.Url.Split(new string[] { siteServerUrl }, StringSplitOptions.RemoveEmptyEntries)[0];
 
-            var absItemUrl = UrlUtility.CombineUrl(serverUrl, pageItem["FileRef"].ToString());
+            var absItemUrl = UrlUtility.CombineUrl(serverUrl, pageFile.ServerRelativeUrl);
 
-            WithWithExistingWebPart(pageItem, definition, (spObject, spObjectDefintion) =>
+            WithExistingWebPart(pageFile, definition, (spObject, spObjectDefintion) =>
             {
                 var webpartExportUrl = UrlUtility.CombineUrl(new[]{
                         webUrl,
@@ -52,15 +58,86 @@ namespace SPMeta2.Regression.CSOM.Validation
                 var webClient = new WebClient();
 
                 if (context.Credentials != null)
+                {
                     webClient.Credentials = context.Credentials;
+                    webClient.Headers.Add("X-FORMS_BASED_AUTH_ACCEPTED", "f");
+                }
                 else
                     webClient.UseDefaultCredentials = true;
 
                 var webPartXmlString = webClient.DownloadString(webpartExportUrl);
                 CurrentWebPartXml = WebpartXmlExtensions.LoadWebpartXmlDocument(webPartXmlString);
 
-
                 assert.ShouldBeEqual(m => m.Title, o => o.Title);
+
+                // checking the web part type, shoul be as expected
+                // Add regression on 'expected' web part type #690
+
+                var currentType = CurrentWebPartXml.GetWebPartAssemblyQualifiedName();
+                var currentClassName = currentType.Split(',').First().Trim();
+
+                var expectedTypeAttr = (definition.GetType().GetCustomAttributes(typeof(ExpectWebpartType))
+                                                        .FirstOrDefault() as ExpectWebpartType);
+
+                // NULL can be on generic web part
+                // test should not care about that case, there other tests to enfore that attr usage
+                if (expectedTypeAttr != null)
+                {
+                    var expectedType = expectedTypeAttr.WebPartType;
+
+                    var expectedClassName = expectedType.Split(',').First().Trim();
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var isValid = true;
+
+                        isValid = currentClassName.ToUpper() == expectedClassName.ToUpper();
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = null,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+
+                // props
+
+                if (definition.Properties.Count > 0)
+                {
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var isValid = true;
+
+                        foreach (var prop in definition.Properties)
+                        {
+                            // returns correct one depending on the V2/V3
+                            var value = CurrentWebPartXml.GetProperty(prop.Name);
+
+                            // that True / true issue give a pain
+                            // toLower for the time being
+                            isValid = value.ToLower() == prop.Value.ToLower();
+
+                            if (!isValid)
+                                break;
+                        }
+
+                        var srcProp = s.GetExpressionValue(m => m.Properties);
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                    assert.SkipProperty(m => m.Properties, "Properties are empty. Skipping.");
+
 
                 if (!string.IsNullOrEmpty(definition.ExportMode))
                 {
@@ -106,12 +183,20 @@ namespace SPMeta2.Regression.CSOM.Validation
 
                 if (!string.IsNullOrEmpty(definition.ChromeType))
                 {
+                    // returns correct one depending on the V2/V3
                     var value = CurrentWebPartXml.GetChromeType();
+
+                    var chromeType = string.Empty;
+
+                    if (CurrentWebPartXml.IsV3version())
+                        chromeType = WebPartChromeTypesConvertService.NormilizeValueToPartChromeTypes(definition.ChromeType);
+                    else if (CurrentWebPartXml.IsV2version())
+                        chromeType = WebPartChromeTypesConvertService.NormilizeValueToFrameTypes(definition.ChromeType);
 
                     assert.ShouldBeEqual((p, s, d) =>
                     {
                         var srcProp = s.GetExpressionValue(m => m.ChromeType);
-                        var isValid = definition.ChromeType == value;
+                        var isValid = chromeType == value;
 
                         return new PropertyValidationResult
                         {
@@ -127,7 +212,21 @@ namespace SPMeta2.Regression.CSOM.Validation
 
                 if (!string.IsNullOrEmpty(definition.Description))
                 {
+                    var value = CurrentWebPartXml.GetProperty("Description");
 
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.Description);
+                        var isValid = (srcProp.Value as string) == value;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
                 }
                 else
                 {
@@ -223,11 +322,17 @@ namespace SPMeta2.Regression.CSOM.Validation
                 if (!string.IsNullOrEmpty(definition.TitleUrl))
                 {
                     var value = CurrentWebPartXml.GetTitleUrl();
+                    var defValue = TokenReplacementService.ReplaceTokens(new TokenReplacementContext
+                    {
+                        Context = listItemModelHost,
+                        Value = value
+                    }).Value;
+
+                    var isValid = defValue.ToUpper() == value.ToUpper();
 
                     assert.ShouldBeEqual((p, s, d) =>
                     {
-                        var srcProp = s.GetExpressionValue(m => m.TitleIconImageUrl);
-                        var isValid = definition.TitleIconImageUrl == value;
+                        var srcProp = s.GetExpressionValue(m => m.TitleUrl);
 
                         return new PropertyValidationResult
                         {
@@ -250,6 +355,73 @@ namespace SPMeta2.Regression.CSOM.Validation
                 assert.SkipProperty(m => m.ZoneIndex, "ZoneIndex is null or empty. Skipping.");
 
                 assert.SkipProperty(m => m.Id, "Id is null or empty. Skipping.");
+
+                if (definition.ParameterBindings.Count == 0)
+                {
+                    assert.SkipProperty(m => m.ParameterBindings, "ParameterBindings is null or empty. Skipping.");
+                }
+                else
+                {
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        // that's a fast hack
+                        // hope we eoudn't have other web part with ParameterBindings :)
+                        var webPartBindings = CurrentWebPartXml.GetProperty("ParameterBindings");
+                        var isValid = true;
+
+                        var srcProp = s.GetExpressionValue(m => m.ParameterBindings);
+
+                        // one more hack, fix up later
+                        // just checking presense of the strings
+                        foreach (var srcBinding in s.ParameterBindings)
+                        {
+                            var hasName = webPartBindings.Contains(srcBinding.Name);
+                            var hasValue = webPartBindings.Contains(srcBinding.Location);
+
+                            if (!hasName || !hasValue)
+                            {
+                                isValid = false;
+                            }
+                        }
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+
+                if (!string.IsNullOrEmpty(definition.AuthorizationFilter))
+                {
+                    var value = CurrentWebPartXml.GetProperty("AuthorizationFilter");
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.AuthorizationFilter);
+                        var isValid = (srcProp.Value as string) == value;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                {
+                    assert.SkipProperty(m => m.AuthorizationFilter, "AuthorizationFilter is null or empty. Skipping.");
+                }
+
+                if (definition.Hidden.HasValue)
+                    assert.ShouldBeEqual(m => m.Hidden, o => o.Hidden);
+                else
+                    assert.SkipProperty(m => m.Hidden, "Hidden is null or empty. Skipping.");
+
             });
         }
     }

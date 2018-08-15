@@ -6,6 +6,7 @@ using SPMeta2.Common;
 using SPMeta2.Definitions;
 using SPMeta2.Definitions.Base;
 using SPMeta2.Definitions.ContentTypes;
+using SPMeta2.Services;
 using SPMeta2.SSOM.ModelHandlers.ContentTypes.Base;
 using SPMeta2.SSOM.ModelHosts;
 using SPMeta2.Utils;
@@ -59,13 +60,34 @@ namespace SPMeta2.SSOM.ModelHandlers.ContentTypes
                 SPContentType listContentType = null;
 
                 if (!string.IsNullOrEmpty(srcContentTypeDef.ContentTypeName))
-                    listContentType = listContentTypes.FirstOrDefault(c => c.Name == srcContentTypeDef.ContentTypeName);
+                {
+                    listContentType = listContentTypes.FirstOrDefault(c => c.Name.ToUpper() == srcContentTypeDef.ContentTypeName.ToUpper());
+
+                    if (listContentType != null)
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                            string.Format("Found content type by name:[{0}]", srcContentTypeDef.ContentTypeName));
+                    }
+                }
 
                 if (listContentType == null && !string.IsNullOrEmpty(srcContentTypeDef.ContentTypeId))
-                    listContentType = listContentTypes.FirstOrDefault(c => c.Id.ToString().ToUpper().StartsWith(srcContentTypeDef.ContentTypeId.ToUpper()));
+                {
+                    var spContentTypeId = new SPContentTypeId(srcContentTypeDef.ContentTypeId);
+                    listContentType = listContentTypes.FirstOrDefault(c => c.Parent.Id == spContentTypeId);
+
+                    if (listContentType != null)
+                    {
+                        TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                            string.Format("Found content type by matching parent ID:[{0}]", srcContentTypeDef.ContentTypeId));
+                    }
+                }
 
                 if (listContentType != null && !newContentTypeOrder.Contains(listContentType))
+                {
+                    TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall,
+                        string.Format("Adding content type to new ordering"));
                     newContentTypeOrder.Add(listContentType);
+                }
             }
 
             // filling up gapes

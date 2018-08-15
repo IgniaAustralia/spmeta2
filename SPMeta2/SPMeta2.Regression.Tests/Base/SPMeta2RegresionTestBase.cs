@@ -24,15 +24,193 @@ using SPMeta2.Validation.Services;
 using System.Collections.ObjectModel;
 using SPMeta2.Standard.Enumerations;
 using System.Text;
+using SPMeta2.Containers.Services.Rnd;
+using SPMeta2.Definitions.Base;
+using SPMeta2.Regression.ModelHandlers;
+using SPMeta2.Regression.Tests.Impl.Scenarios.Webparts;
+using SPMeta2.Services;
+using System.IO;
+using SPMeta2.Containers.Consts;
+using SPMeta2.Regression.Utils;
 
 namespace SPMeta2.Regression.Tests.Base
 {
-    public class SPMeta2RegresionTestBase
+    public class SPMeta2RegresionTestCoreBase : SPMeta2RegresionTestVeryBase
+    {
+        static SPMeta2RegresionTestCoreBase()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+        }
+
+        private static string GetFullPath(string path)
+        {
+            return Path.GetFullPath(path);
+        }
+
+        static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var m2runner = RegressionTestService.CurrentProvisionRunnerAsssmbly;
+            var baseDir = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
+
+            RegressionUtils.WriteLine(string.Format("Resolving custom assembly binding for m2 runner:[{0}]", m2runner));
+
+            RegressionUtils.WriteLine(string.Format("    RequestingAssembly:[{0}]", args.RequestingAssembly));
+            RegressionUtils.WriteLine(string.Format("    What requested:[{0}]", args.Name));
+
+            if (args.Name.Contains(".resources,"))
+            {
+                RegressionUtils.WriteLine("resources assembly. returning null");
+                return null;
+            }
+
+            var assemblyName = args.Name.Split(',')[0] + ".dll";
+            var assemblyVersion = args.Name.Split(',')[1].Split('=')[1];
+
+            var assemblyDirs = new List<string>();
+
+            if (assemblyName.Contains("Microsoft.SharePoint.Client."))
+            {
+                switch (assemblyVersion)
+                {
+                    case "16.1.0.0":
+                        assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\csom-v365"));
+                        break;
+
+                    case "15.0.0.0":
+                        assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\csom-v2013"));
+                        break;
+                }
+            }
+
+            if (m2runner == "SPMeta2.Containers.O365v16.dll")
+            {
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-365"));
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-regression-365"));
+
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-regression-365"));
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-regression-365"));
+
+                // VS sometimes does not coipy these accorss
+                // referencing straight to the solution
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM.Standard\bin\Debug45-365\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM\bin\Debug45-365\")));
+
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM\bin\Debug45-365\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM.Standard\bin\Debug45-365\")));
+            }
+
+            if (m2runner == "SPMeta2.Containers.O365.dll")
+            {
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-2013"));
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-regression-2013"));
+
+                // VS sometimes does not coipy these accorss
+                // referencing straight to the solution
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM.Standard\bin\Debug45\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM\bin\Debug45\")));
+
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM\bin\Debug45\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM.Standard\bin\Debug45\")));
+            }
+
+            if (m2runner == "SPMeta2.Containers.CSOM.dll")
+            {
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-2013"));
+                assemblyDirs.Add(Path.Combine(baseDir, @"_Dependencies\spmeta2-csom-regression-2013"));
+
+                // VS sometimes does not coipy these accorss
+                // referencing straight to the solution
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM.Standard\bin\Debug45\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.CSOM\bin\Debug45\")));
+
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM\bin\Debug45\")));
+                assemblyDirs.Add(GetFullPath(Path.Combine(baseDir, @"..\..\..\SPMeta2.Regression.CSOM.Standard\bin\Debug45\")));
+            }
+
+            foreach (var dir in assemblyDirs)
+            {
+                var filePath = Path.Combine(dir, assemblyName);
+
+                if (File.Exists(filePath))
+                {
+                    RegressionUtils.WriteLine(string.Format("Loading assemblly:[{0}]", filePath));
+                    return Assembly.LoadFile(filePath);
+                }
+            }
+
+            throw new Exception(string.Format("Cannot load custom assembly:[{0}] for assembly:[{1}]. Rebuild solution via powershell .\build in 'Build' project and run regression again",
+                args.Name,
+                args.RequestingAssembly
+                ));
+        }
+
+
+        public SPMeta2RegresionTestCoreBase()
+        {
+            Rnd = new DefaultRandomService();
+
+            ModelGeneratorService = new ModelGeneratorService();
+            ModelGeneratorService.RegisterDefinitionGenerators(typeof(ImageRenditionDefinitionGenerator).Assembly);
+        }
+        protected RandomService Rnd { get; set; }
+
+        protected virtual bool IsCorrectValidationException(Exception e)
+        {
+            var result = true;
+
+            result = result & (e is SPMeta2Exception);
+            result = result & (e.InnerException is SPMeta2AggregateException);
+            result = result & ((e.InnerException as AggregateException)
+                                    .InnerExceptions.All(ee => ee is SPMeta2ModelValidationException));
+
+            return result;
+        }
+
+        public ModelGeneratorService ModelGeneratorService { get; set; }
+
+        protected virtual T RndDef<T>()
+            where T : DefinitionBase
+        {
+            return RndDef<T>(null);
+        }
+
+        protected virtual T RndDef<T>(Action<T> action)
+            where T : DefinitionBase
+        {
+            return ModelGeneratorService.GetRandomDefinition<T>(action);
+        }
+        public bool IsIncrementalProvisionMode
+        {
+            get
+            {
+                var result = false;
+
+                var value = RunnerEnvironmentUtils.GetEnvironmentVariable(EnvironmentConsts.RunnerProvisionMode);
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    if (value.ToLower() == "incremental")
+                        result = true;
+                }
+
+                return result;
+            }
+        }
+    }
+
+    public class SPMeta2DefinitionRegresionTestBase : SPMeta2RegresionTestCoreBase
+    {
+
+    }
+
+    public class SPMeta2ProvisionRegresionTestBase : SPMeta2RegresionTestCoreBase
     {
         #region constructors
 
-        public SPMeta2RegresionTestBase()
+        public SPMeta2ProvisionRegresionTestBase()
         {
+            ModelServiceBase.OnResolveNullModelHandler = (node => new EmptyModelhandler());
+
             RegressionService.EnableDefinitionProvision = true;
             RegressionService.ProvisionGenerationCount = 2;
 
@@ -46,7 +224,15 @@ namespace SPMeta2.Regression.Tests.Base
             TestOptions = new RunOptions();
 
             TestOptions.EnableWebApplicationDefinitionTest = false;
+            TestOptions.EnableSerializeDeserializeAndStillDeployTests = false;
 
+            TestOptions.EnableContentTypeHubTests = true;
+            TestOptions.EnablWebConfigModificationTest = false;
+
+            // too long, disabled by default
+            // Module file provision fails at minor version 511 #930
+            // https://github.com/SubPointSolutions/spmeta2/issues/930
+            TestOptions.EnableModuleFile511Tests = false;
         }
 
         #endregion
@@ -70,14 +256,24 @@ namespace SPMeta2.Regression.Tests.Base
             RegressionService.OnModelPropertyValidated(sender, e);
         }
 
-        static SPMeta2RegresionTestBase()
+        static SPMeta2ProvisionRegresionTestBase()
         {
-            RegressionService = new RegressionTestService();
+            // ensure we aren't in GAC
+            var location = typeof(FieldDefinition).Assembly.Location;
 
-            RegressionService.AssertService = new VSAssertService();
+            if (location.ToUpper().Contains("GAC_"))
+            {
+                throw new SPMeta2Exception(string.Format("M2 assemblies are beinfg loaded from the GAC: [{0}].", location));
+            }
 
-            RegressionService.EnableDefinitionValidation = true;
-            RegressionService.ModelGeneratorService.RegisterDefinitionGenerators(typeof(ImageRenditionDefinitionGenerator).Assembly);
+
+            // moved to RegressionService lazy load initialization
+            //RegressionService = new RegressionTestService();
+
+            //RegressionService.AssertService = new VSAssertService();
+
+            //RegressionService.EnableDefinitionValidation = true;
+            //RegressionService.ModelGeneratorService.RegisterDefinitionGenerators(typeof(ImageRenditionDefinitionGenerator).Assembly);
         }
 
         #endregion
@@ -87,11 +283,19 @@ namespace SPMeta2.Regression.Tests.Base
         protected class RunOptions
         {
             public bool EnableWebApplicationDefinitionTest { get; set; }
+            public bool EnableSerializeDeserializeAndStillDeployTests { get; set; }
+
+            public bool EnablWebConfigModificationTest { get; set; }
+
+            public bool EnableContentTypeHubTests { get; set; }
+
+            public bool EnableModuleFile511Tests { get; set; }
         }
 
         #endregion
 
         #region properties
+
 
         public bool EnablePropertyNullableValidation { get; set; }
         public int PropertyNullableGenerationCount { get; set; }
@@ -99,16 +303,72 @@ namespace SPMeta2.Regression.Tests.Base
         protected RunOptions TestOptions { get; set; }
         public bool EnablePropertyUpdateValidation { get; set; }
 
-        public static RegressionTestService RegressionService { get; set; }
+        private static RegressionTestService _regressionService;
 
-        public ModelGeneratorService ModelGeneratorService
+        public static RegressionTestService RegressionService
         {
-            get { return RegressionService.ModelGeneratorService; }
+            get
+            {
+                if (_regressionService == null)
+                {
+                    _regressionService = new RegressionTestService();
+                    _regressionService.AssertService = new VSAssertService();
+
+                    _regressionService.EnableDefinitionValidation = true;
+                    _regressionService.ModelGeneratorService.RegisterDefinitionGenerators(typeof(ImageRenditionDefinitionGenerator).Assembly);
+                }
+
+                return _regressionService;
+            }
+            set
+            {
+                _regressionService = value;
+            }
         }
+
+        //public ModelGeneratorService ModelGeneratorService
+        //{
+        //    get { return RegressionService.ModelGeneratorService; }
+        //}
 
         #endregion
 
         #region testing API
+
+        protected virtual void WithDisabledValidationOnTypes(Type type, Action action)
+        {
+            WithDisabledValidationOnTypes(new[] { type }, action);
+        }
+
+        protected virtual void WithDisabledValidationOnTypes(IEnumerable<Type> types, Action action)
+        {
+            try
+            {
+                RegressionService.RegExcludedDefinitionTypes.Add(typeof(WebDefinition));
+                action();
+            }
+            finally
+            {
+                RegressionService.RegExcludedDefinitionTypes.Clear();
+            }
+        }
+
+
+        protected void WithDisabledDefinitionImmutabilityValidation(Action action)
+        {
+            var _oldValue = RegressionService.EnableDefinitionImmutabilityValidation;
+
+
+            try
+            {
+                RegressionService.EnableDefinitionImmutabilityValidation = false;
+                action();
+            }
+            finally
+            {
+                RegressionService.EnableDefinitionImmutabilityValidation = _oldValue;
+            }
+        }
 
         protected void WithDisabledPropertyUpdateValidation(Action action)
         {
@@ -138,13 +398,16 @@ namespace SPMeta2.Regression.Tests.Base
             var model = RegressionService.TestRandomDefinition(definitionSetup);
 
             PleaseMakeSureWeCanUpdatePropertiesForTheSharePointSake(new[] { model });
+
+
+            PleaseMakeSureWeCanSerializeDeserializeAndStillDeploy(new[] { model });
         }
 
         protected void WithSPMeta2NotSupportedExceptions(Action action)
         {
             WithExcpectedExceptions(new Type[] {
                 typeof(SPMeta2NotSupportedException)
-             
+
             }, action);
         }
 
@@ -168,12 +431,17 @@ namespace SPMeta2.Regression.Tests.Base
 
         protected void TestModel(ModelNode model)
         {
-            TestModels(new[] { model });
+            TestModel(model, false);
+        }
+
+        protected void TestModel(ModelNode model, bool deployOnce)
+        {
+            TestModels(new ModelNode[] { model }, deployOnce);
         }
 
         protected void TestModel(ModelNode firstModel, ModelNode secondModel)
         {
-            TestModels(new[] { firstModel, secondModel });
+            TestModels(new ModelNode[] { firstModel, secondModel });
         }
 
 
@@ -211,26 +479,51 @@ namespace SPMeta2.Regression.Tests.Base
             }
         }
 
-
-
         protected void TestModels(IEnumerable<ModelNode> models)
         {
-            RegressionService.TestModels(models);
-            PleaseMakeSureWeCanUpdatePropertiesForTheSharePointSake(models);
+            TestModels(models, false);
+        }
+
+        protected void TestModels(IEnumerable<ModelNode> models, bool deployOnce)
+        {
+            RegressionService.TestModels(models, deployOnce);
+
+            if (!deployOnce)
+            {
+                PleaseMakeSureWeCanUpdatePropertiesForTheSharePointSake(models);
+                PleaseMakeSureWeCanSerializeDeserializeAndStillDeploy(models);
+            }
+        }
+
+        private void PleaseMakeSureWeCanSerializeDeserializeAndStillDeploy(IEnumerable<ModelNode> models)
+        {
+            if (!TestOptions.EnableSerializeDeserializeAndStillDeployTests)
+                return;
+
+            IndentableTrace.WithScope(trace =>
+            {
+                trace.WriteLine("Saving-restoring XML/JSON models. Deployng..");
+                var serializedModels = RegressionService.GetSerializedAndRestoredModels(models);
+
+                RegressionService.TestModels(serializedModels);
+            });
         }
 
         private void ProcessPropertyUpdateValidation(IEnumerable<ModelNode> models)
         {
             foreach (var model in models)
             {
+                var localModel = model;
+
                 model.WithNodesOfType<DefinitionBase>(node =>
                 {
                     var def = node.Value;
-                    ProcessDefinitionsPropertyUpdateValidation(def);
+
+                    if (node != localModel)
+                        ProcessDefinitionsPropertyUpdateValidation(def);
                 });
             }
         }
-
 
         private void ProcessDefinitionsPropertyNulableValidation(DefinitionBase def)
         {
@@ -239,7 +532,7 @@ namespace SPMeta2.Regression.Tests.Base
                 .Where(p => p.GetCustomAttributes(typeof(ExpectNullable), true).Count() > 0);
 
 
-            TraceUtils.WithScope(trace =>
+            IndentableTrace.WithScope(trace =>
             {
                 trace.WriteLine("");
 
@@ -269,7 +562,7 @@ namespace SPMeta2.Regression.Tests.Base
                 .Where(p => p.GetCustomAttributes(typeof(ExpectUpdate), true).Count() > 0);
 
 
-            TraceUtils.WithScope(trace =>
+            IndentableTrace.WithScope(trace =>
             {
                 trace.WriteLine("");
 
@@ -285,483 +578,11 @@ namespace SPMeta2.Regression.Tests.Base
                     foreach (var prop in updatableProps)
                     {
                         object newValue = null;
+                        var expectUpdateAttr = prop.GetCustomAttributes(typeof(ExpectUpdate), true)
+                                                   .FirstOrDefault() as ExpectUpdate;
 
-                        var attrs = prop.GetCustomAttributes(typeof(ExpectUpdate), true);
 
-                        if (attrs.Count(a => a is ExpectUpdateAsLCID) > 0)
-                        {
-                            var newLocaleIdValue = 1033 + RegressionService.RndService.Int(5);
-
-                            if (prop.PropertyType == typeof(int))
-                                newValue = newLocaleIdValue;
-                            else if (prop.PropertyType == typeof(int?))
-                                newValue = RegressionService.RndService.Bool() ? (int?)null : newLocaleIdValue;
-                            else if (prop.PropertyType == typeof(uint))
-                                newValue = (uint)newLocaleIdValue;
-                            else if (prop.PropertyType == typeof(uint?))
-                                newValue = (uint?)(RegressionService.RndService.Bool() ? (uint?)null : (uint?)newLocaleIdValue);
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsUser) > 0)
-                        {
-                            var newUserValue = RegressionService.RndService.UserLogin();
-                            newValue = newUserValue;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsStandalone) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add("Override");
-                            values.Add("Standalone");
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsTargetControlType) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInTargetControlType.ContentWebParts);
-                            values.Add(BuiltInTargetControlType.Custom);
-                            values.Add(BuiltInTargetControlType.Refinement);
-                            values.Add(BuiltInTargetControlType.SearchBox);
-                            values.Add(BuiltInTargetControlType.SearchHoverPanel);
-                            values.Add(BuiltInTargetControlType.SearchResults);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(List<string>))
-                            {
-                                var result = new List<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsWebPartPageLayoutTemplate) > 0)
-                        {
-                            var values = new List<int>();
-
-                            values.Add(BuiltInWebpartPageTemplateId.spstd1);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd2);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd3);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd4);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd5);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd6);
-                            values.Add(BuiltInWebpartPageTemplateId.spstd7);
-
-                            if (prop.PropertyType == typeof(int))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsDateTimeFieldCalendarType) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInCalendarType.Gregorian);
-                            values.Add(BuiltInCalendarType.Korea);
-                            values.Add(BuiltInCalendarType.Hebrew);
-                            values.Add(BuiltInCalendarType.GregorianArabic);
-                            values.Add(BuiltInCalendarType.SakaEra);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsFieldUserSelectionMode) > 0)
-                        {
-                            var curentValue = prop.GetValue(def) as string;
-
-                            if (curentValue == BuiltInFieldUserSelectionMode.PeopleAndGroups)
-                                newValue = BuiltInFieldUserSelectionMode.PeopleOnly;
-                            else
-                                newValue = BuiltInFieldUserSelectionMode.PeopleAndGroups;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsDateTimeFieldCalendarType) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInCalendarType.Gregorian);
-                            values.Add(BuiltInCalendarType.Korea);
-                            values.Add(BuiltInCalendarType.Hebrew);
-                            values.Add(BuiltInCalendarType.GregorianArabic);
-                            values.Add(BuiltInCalendarType.SakaEra);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsChromeState) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInPartChromeState.Minimized);
-                            values.Add(BuiltInPartChromeState.Normal);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsChromeType) > 0)
-                        {
-                            var values = new List<string>();
-
-                            //values.Add(BuiltInPartChromeType.BorderOnly);
-                            values.Add(BuiltInPartChromeType.Default);
-                            values.Add(BuiltInPartChromeType.None);
-                            //values.Add(BuiltInPartChromeType.TitleAndBorder);
-                            //values.Add(BuiltInPartChromeType.TitleOnly);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsDateTimeFieldDisplayFormat) > 0)
-                        {
-                            var curentValue = prop.GetValue(def) as string;
-
-                            if (curentValue == BuiltInDateTimeFieldFormatType.DateOnly)
-                                newValue = BuiltInDateTimeFieldFormatType.DateTime;
-                            else
-                                newValue = BuiltInDateTimeFieldFormatType.DateOnly;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsDateTimeFieldFriendlyDisplayFormat) > 0)
-                        {
-                            var curentValue = prop.GetValue(def) as string;
-
-                            if (curentValue == BuiltInDateTimeFieldFriendlyFormatType.Disabled)
-                                newValue = BuiltInDateTimeFieldFriendlyFormatType.Relative;
-                            else if (curentValue == BuiltInDateTimeFieldFriendlyFormatType.Relative)
-                                newValue = BuiltInDateTimeFieldFriendlyFormatType.Unspecified;
-                            else if (curentValue == BuiltInDateTimeFieldFriendlyFormatType.Unspecified)
-                                newValue = BuiltInDateTimeFieldFriendlyFormatType.Disabled;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsByte) > 0)
-                        {
-                            if (prop.PropertyType == typeof(int?) ||
-                                prop.PropertyType == typeof(int?))
-                                newValue = Convert.ToInt32(RegressionService.RndService.Byte().ToString());
-                            else
-                            {
-                                // TODO, as per case
-                                newValue = RegressionService.RndService.Byte();
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsCamlQuery) > 0)
-                        {
-                            newValue =
-                                string.Format(
-                                    "<Where><Eq><FieldRef Name=\"Title\" /><Value Type=\"Text\">{0}</Value></Eq></Where>",
-                                    RegressionService.RndService.String());
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsIntRange) > 0)
-                        {
-                            var attr =
-                                attrs.FirstOrDefault(a => a is ExpectUpdateAsIntRange) as ExpectUpdateAsIntRange;
-
-                            var minValue = attr.MinValue;
-                            var maxValue = attr.MaxValue;
-
-                            var tmpValue = minValue + RegressionService.RndService.Int(maxValue - minValue);
-
-                            if (prop.PropertyType == typeof(double?) ||
-                                prop.PropertyType == typeof(double))
-                                newValue = Convert.ToDouble(tmpValue);
-                            else
-                            {
-                                // TODO, as per case
-                                newValue = tmpValue;
-                            }
-
-                        }
-
-                        else if (attrs.Count(a => a is ExpectUpdateAsUrl) > 0)
-                        {
-                            var attr =
-                                attrs.FirstOrDefault(a => a is ExpectUpdateAsUrl) as ExpectUpdateAsUrl;
-                            var fileExtension = attr.Extension;
-
-                            if (!fileExtension.StartsWith("."))
-                                fileExtension = "." + fileExtension;
-
-                            newValue = string.Format("http://regression-ci.com/{0}{1}",
-                                RegressionService.RndService.String(), fileExtension);
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsFileName) > 0)
-                        {
-                            var attr =
-                                attrs.FirstOrDefault(a => a is ExpectUpdateAsFileName) as ExpectUpdateAsFileName;
-                            var fileExtension = attr.Extension;
-
-                            if (!fileExtension.StartsWith("."))
-                                fileExtension = "." + fileExtension;
-
-                            newValue = string.Format("{0}{1}", RegressionService.RndService.String(), fileExtension);
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsInternalFieldName) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInInternalFieldNames.ID);
-                            values.Add(BuiltInInternalFieldNames.Edit);
-                            values.Add(BuiltInInternalFieldNames.Created);
-                            values.Add(BuiltInInternalFieldNames._Author);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsPageLayoutFileName) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInPublishingPageLayoutNames.ArticleLeft);
-                            values.Add(BuiltInPublishingPageLayoutNames.ArticleLinks);
-                            values.Add(BuiltInPublishingPageLayoutNames.ArticleRight);
-                            values.Add(BuiltInPublishingPageLayoutNames.BlankWebPartPage);
-                            values.Add(BuiltInPublishingPageLayoutNames.CatalogArticle);
-                            values.Add(BuiltInPublishingPageLayoutNames.CatalogWelcome);
-                            values.Add(BuiltInPublishingPageLayoutNames.EnterpriseWiki);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsUrlFieldFormat) > 0)
-                        {
-                            var curentValue = prop.GetValue(def) as string;
-
-                            if (curentValue == BuiltInUrlFieldFormatType.Hyperlink)
-                                newValue = BuiltInUrlFieldFormatType.Image;
-                            else
-                                newValue = BuiltInUrlFieldFormatType.Hyperlink;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsCalculatedFieldFormula) > 0)
-                        {
-                            newValue = string.Format("=ID*{0}", RegressionService.RndService.Int(100));
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAssCalculatedFieldOutputType) > 0)
-                        {
-                            var curentValue = prop.GetValue(def) as string;
-
-                            if (curentValue == BuiltInFieldTypes.Number)
-                                newValue = BuiltInFieldTypes.Text;
-                            else
-                                newValue = BuiltInFieldTypes.Number;
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAssCalculatedFieldReferences) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInInternalFieldNames.ID);
-                            values.Add(BuiltInInternalFieldNames.FileRef);
-                            values.Add(BuiltInInternalFieldNames.FileType);
-                            values.Add(BuiltInInternalFieldNames.File_x0020_Size);
-                            values.Add(BuiltInInternalFieldNames.FirstName);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsBasePermission) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInBasePermissions.AddAndCustomizePages);
-                            values.Add(BuiltInBasePermissions.AnonymousSearchAccessWebLists);
-                            values.Add(BuiltInBasePermissions.ApproveItems);
-                            values.Add(BuiltInBasePermissions.CancelCheckout);
-                            values.Add(BuiltInBasePermissions.CreateSSCSite);
-                            values.Add(BuiltInBasePermissions.EditMyUserInfo);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsPublishingPageContentType) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add(BuiltInPublishingContentTypeId.ArticlePage);
-                            values.Add(BuiltInPublishingContentTypeId.EnterpriseWikiPage);
-                            values.Add(BuiltInPublishingContentTypeId.ErrorPage);
-                            values.Add(BuiltInPublishingContentTypeId.RedirectPage);
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else if (attrs.Count(a => a is ExpectUpdateAsUIVersion) > 0)
-                        {
-                            var values = new List<string>();
-
-                            values.Add("4");
-                            values.Add("15");
-
-                            if (prop.PropertyType == typeof(string))
-                                newValue = values[RegressionService.RndService.Int(values.Count - 1)];
-
-                            if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var result = new Collection<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-
-                            if (prop.PropertyType == typeof(List<string>))
-                            {
-                                var result = new List<string>();
-                                var resultLength = RegressionService.RndService.Int(values.Count - 1);
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(values[index]);
-
-                                newValue = result;
-                            }
-                        }
-                        else
-                        {
-                            // all this needs to be refactored, we know
-
-                            if (prop.PropertyType == typeof(byte[]))
-                            {
-                                if (def is WebPartGalleryFileDefinition
-                                    && prop.Name == "Content")
-                                {
-                                    // change web part
-                                    var webPartXmlString = Encoding.UTF8.GetString(prop.GetValue(def) as byte[]);
-                                    var webPartXml = WebpartXmlExtensions.LoadWebpartXmlDocument(webPartXmlString);
-
-                                    webPartXml.SetTitleUrl(RegressionService.RndService.HttpUrl());
-
-                                    newValue = Encoding.UTF8.GetBytes(webPartXml.ToString());
-                                }
-                                else
-                                {
-                                    newValue = RegressionService.RndService.Content();
-                                }
-                            }
-                            else if (prop.PropertyType == typeof(string))
-                                newValue = RegressionService.RndService.String();
-                            else if (prop.PropertyType == typeof(bool))
-                                newValue = RegressionService.RndService.Bool();
-                            else if (prop.PropertyType == typeof(bool?))
-                            {
-                                var oldValue = prop.GetValue(def) as bool?;
-
-                                if (oldValue == null || !oldValue.HasValue)
-                                {
-                                    newValue = RegressionService.RndService.Bool();
-                                }
-                                else
-                                {
-                                    newValue = !oldValue.Value;
-                                }
-                            }
-                            else if (prop.PropertyType == typeof(int))
-                                newValue = RegressionService.RndService.Int();
-                            else if (prop.PropertyType == typeof(int?))
-                                newValue = RegressionService.RndService.Bool()
-                                    ? (int?)null
-                                    : RegressionService.RndService.Int();
-                            else if (prop.PropertyType == typeof(uint))
-                                newValue = (uint)RegressionService.RndService.Int();
-                            else if (prop.PropertyType == typeof(uint?))
-                                newValue =
-                                    (uint?)
-                                        (RegressionService.RndService.Bool()
-                                            ? (uint?)null
-                                            : (uint?)RegressionService.RndService.Int());
-                            else if (prop.PropertyType == typeof(Collection<string>))
-                            {
-                                var resultLength = RegressionService.RndService.Int(10);
-                                var values = new List<string>();
-
-                                var result = new Collection<string>();
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(RegressionService.RndService.String());
-
-                                newValue = result;
-                            }
-                            else if (prop.PropertyType == typeof(List<string>))
-                            {
-                                var resultLength = RegressionService.RndService.Int(10);
-                                var values = new List<string>();
-
-                                var result = new List<string>();
-
-                                for (var index = 0; index < resultLength; index++)
-                                    result.Add(RegressionService.RndService.String());
-
-                                newValue = result;
-                            }
-
-
-                            else if (prop.PropertyType == typeof(double?)
-                                     || prop.PropertyType == typeof(double))
-                            {
-                                newValue = (double)RegressionService.RndService.Int();
-                            }
-                            else
-                            {
-                                throw new NotImplementedException(
-                                    string.Format("Update validation for type: [{0}] is not supported yet",
-                                        prop.PropertyType));
-                            }
-                        }
+                        newValue = GetNewPropValue(expectUpdateAttr, def, prop);
 
                         trace.WriteLine(string.Format("[INF]\t\tChanging property [{0}] from [{1}] to [{2}]", prop.Name, prop.GetValue(def), newValue));
                         prop.SetValue(def, newValue);
@@ -770,6 +591,33 @@ namespace SPMeta2.Regression.Tests.Base
 
                 trace.WriteLine("");
             });
+        }
+
+        private static List<ExpectUpdateValueServiceBase> _expectUpdateServices;
+
+        private static List<ExpectUpdateValueServiceBase> ExpectUpdateServices
+        {
+            get
+            {
+                if (_expectUpdateServices == null)
+                {
+                    _expectUpdateServices = new List<ExpectUpdateValueServiceBase>();
+                    _expectUpdateServices.AddRange(ReflectionUtils.GetTypesFromAssembly<ExpectUpdateValueServiceBase>(typeof(ExpectUpdateValueServiceBase).Assembly)
+                                                                 .Select(t => Activator.CreateInstance(t) as ExpectUpdateValueServiceBase));
+                }
+
+                return _expectUpdateServices;
+            }
+        }
+
+        private static object GetNewPropValue(ExpectUpdate attr, object obj, PropertyInfo prop)
+        {
+            var targetServices = ExpectUpdateServices.FirstOrDefault(s => s.TargetType == attr.GetType());
+
+            if (targetServices == null)
+                throw new SPMeta2NotImplementedException(string.Format("Can't find ExpectUpdateValueServiceBase impl for type: [{0}]", attr.GetType()));
+
+            return targetServices.GetNewPropValue(attr, obj, prop);
         }
 
         #endregion

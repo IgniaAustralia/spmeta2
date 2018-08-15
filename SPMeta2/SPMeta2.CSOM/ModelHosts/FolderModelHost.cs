@@ -9,7 +9,7 @@ namespace SPMeta2.CSOM.ModelHosts
         public List CurrentList { get; set; }
         public ListItem CurrentListItem { get; set; }
 
-        public Folder CurrentLibraryFolder { get; set; }
+        public Folder CurrentListFolder { get; set; }
 
         public Web CurrentWeb { get; set; }
         public Folder CurrentWebFolder { get; set; }
@@ -20,6 +20,8 @@ namespace SPMeta2.CSOM.ModelHosts
         //public Folder Folder { get; set; }
         //public List List { get; set; }
         //public Web Web { get; set; }
+
+        public bool IsSpecialFolderContext { get; set; }
 
         #endregion
     }

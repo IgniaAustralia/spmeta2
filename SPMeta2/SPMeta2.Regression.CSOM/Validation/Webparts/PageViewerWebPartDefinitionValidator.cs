@@ -1,4 +1,5 @@
 ﻿using System;
+using SPMeta2.Containers.Assertion;
 using SPMeta2.CSOM.ModelHandlers;
 using SPMeta2.CSOM.ModelHandlers.Webparts;
 using SPMeta2.CSOM.ModelHosts;
@@ -26,13 +27,57 @@ namespace SPMeta2.Regression.CSOM.Validation.Webparts
 
             var pageItem = listItemModelHost.HostListItem;
 
-            WithWithExistingWebPart(pageItem, definition, spObject =>
+            WithExistingWebPart(listItemModelHost.HostFile, definition, spObject =>
             {
                 var assert = ServiceFactory.AssertService
                                            .NewAssert(model, definition, spObject)
                                                  .ShouldNotBeNull(spObject);
 
-                
+                if (!string.IsNullOrEmpty(definition.ContentLink))
+                {
+                    var value = CurrentWebPartXml.GetPageViewerWebPartProperty("ContentLink");
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.ContentLink);
+                        var isValid = definition.ContentLink == value;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                {
+                    assert.SkipProperty(m => m.ContentLink, "ContentLink is null or empty. Skipping.");
+                }
+
+                if (!string.IsNullOrEmpty(definition.SourceType))
+                {
+                    var value = CurrentWebPartXml.GetPageViewerWebPartProperty("SourceType");
+
+                    assert.ShouldBeEqual((p, s, d) =>
+                    {
+                        var srcProp = s.GetExpressionValue(m => m.SourceType);
+                        var isValid = definition.SourceType == value;
+
+                        return new PropertyValidationResult
+                        {
+                            Tag = p.Tag,
+                            Src = srcProp,
+                            Dst = null,
+                            IsValid = isValid
+                        };
+                    });
+                }
+                else
+                {
+                    assert.SkipProperty(m => m.SourceType, "SourceType is null or empty. Skipping.");
+                }
             });
         }
     }

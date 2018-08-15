@@ -5,6 +5,7 @@ using SPMeta2.Attributes.Regression;
 using SPMeta2.Definitions;
 using SPMeta2.Utils;
 using System.Runtime.Serialization;
+using SPMeta2.Attributes.Capabilities;
 
 namespace SPMeta2.Standard.Definitions.Webparts
 {
@@ -21,8 +22,22 @@ namespace SPMeta2.Standard.Definitions.Webparts
     [DataContract]
     [ExpectArrayExtensionMethod]
 
+    [ExpectManyInstances]
+
+    [ExpectWebpartType(WebPartType = "Microsoft.SharePoint.Publishing.WebControls.ContentByQueryWebPart, Microsoft.SharePoint.Publishing, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c")]
+
     public class ContentByQueryWebPartDefinition : WebPartDefinition
     {
+        #region constructor
+
+        public ContentByQueryWebPartDefinition()
+        {
+            ItemStyle = "Default";
+            GroupStyle = "DefaultHeader";
+        }
+
+        #endregion
+
         #region properties
 
         [DataMember]
@@ -52,7 +67,7 @@ namespace SPMeta2.Standard.Definitions.Webparts
 
         [DataMember]
         [ExpectValidation]
-        //[ExpectUpdate]
+        [ExpectUpdate]
         public bool? UseCopyUtil { get; set; }
 
         [DataMember]
@@ -67,6 +82,10 @@ namespace SPMeta2.Standard.Definitions.Webparts
         [DataMember]
         [ExpectValidation]
         public string WebUrl { get; set; }
+
+        [DataMember]
+        [ExpectValidation]
+        public Guid? WebId { get; set; }
 
         [DataMember]
         [ExpectValidation]
@@ -99,10 +118,16 @@ namespace SPMeta2.Standard.Definitions.Webparts
 
         [DataMember]
         [ExpectValidation]
+
+        [SiteCollectionTokenCapability]
+        [WebTokenCapability]
         public string MainXslLink { get; set; }
 
         [DataMember]
         [ExpectValidation]
+
+        [SiteCollectionTokenCapability]
+        [WebTokenCapability]
         public string ItemXslLink { get; set; }
 
         [DataMember]
@@ -152,6 +177,80 @@ namespace SPMeta2.Standard.Definitions.Webparts
         [DataMember]
         [ExpectValidation]
         public string FilterOperator3 { get; set; }
+
+
+
+        [DataMember]
+
+        [SiteCollectionTokenCapability]
+        [WebTokenCapability]
+        public string HeaderXslLink { get; set; }
+
+        [DataMember]
+        public bool? UseCache { get; set; }
+
+        [DataMember]
+        public bool? CacheXslStorage { get; set; }
+
+        [DataMember]
+        public string FilterField1 { get; set; }
+
+        [DataMember]
+        public string FilterField2 { get; set; }
+
+        [DataMember]
+        public string FilterField3 { get; set; }
+
+        [DataMember]
+        public string ContentTypeName { get; set; }
+
+        [DataMember]
+        public Guid? ListId { get; set; }
+
+        [DataMember]
+        public string ListsOverride { get; set; }
+
+        [DataMember]
+        public string ViewFieldsOverride { get; set; }
+
+        [DataMember]
+        public bool? FilterByAudience { get; set; }
+
+        [DataMember]
+        public string CommonViewFields { get; set; }
+
+        [DataMember]
+        public string QueryOverride { get; set; }
+
+        [DataMember]
+        public string Filter1ChainingOperator { get; set; }
+
+        [DataMember]
+        public string Filter2ChainingOperator { get; set; }
+
+        [DataMember]
+        public int? CacheXslTimeOut { get; set; }
+
+        [DataMember]
+        public string GroupByDirection { get; set; }
+
+        [DataMember]
+        [ExpectValidation]
+        public string GroupBy { get; set; }
+
+        [DataMember]
+        [ExpectValidation]
+        [ExpectUpdateAsIntRange(MinValue = 1, MaxValue = 10)]
+        public int? DisplayColumns { get; set; }
+
+        [DataMember]
+        public bool? Filter1IsCustomValue { get; set; }
+
+        [DataMember]
+        public bool? Filter2IsCustomValue { get; set; }
+
+        [DataMember]
+        public bool? Filter3IsCustomValue { get; set; }
 
         #endregion
 

@@ -13,8 +13,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using SPMeta2.Containers.Extensions;
 using SPMeta2.Syntax.Default.Modern;
+using SPMeta2.Syntax.Extended;
 
 namespace SPMeta2.Regression.Tests.Impl.Scenarios
 {
@@ -143,6 +144,131 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                 });
 
             TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_ResetRoleInheritance_On_WikiPage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+                {
+                    web.AddHostSitePagesList(rndList =>
+                    {
+                        rndList.AddRandomWikiPage(page =>
+                        {
+                            page.OnProvisioning<object>(context =>
+                            {
+                                TurnOffValidation(page);
+                            });
+
+                            page
+                                .AddBreakRoleInheritance(GetCleanInheritance(), breakInheritance =>
+                                {
+                                    breakInheritance.OnProvisioning<object>(context =>
+                                    {
+                                        TurnOffValidation(breakInheritance);
+                                    });
+                                })
+                                .AddResetRoleInheritance(new ResetRoleInheritanceDefinition());
+                        });
+                    });
+                });
+
+            TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_ResetRoleInheritance_On_WebPartPage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddHostSitePagesList(rndList =>
+                {
+                    rndList.AddRandomWebPartPage(page =>
+                    {
+                        page.OnProvisioning<object>(context =>
+                        {
+                            TurnOffValidation(page);
+                        });
+
+                        page
+                            .AddBreakRoleInheritance(GetCleanInheritance(), breakInheritance =>
+                            {
+                                breakInheritance.OnProvisioning<object>(context =>
+                                {
+                                    TurnOffValidation(breakInheritance);
+                                });
+                            })
+                            .AddResetRoleInheritance(new ResetRoleInheritanceDefinition());
+                    });
+                });
+            });
+
+            TestModel(model);
+        }
+
+        private ModelNode GetSiteInsfrastructureModel()
+        {
+            var model = SPMeta2Model.NewSiteModel(site =>
+           {
+               site.AddSiteFeature(BuiltInSiteFeatures.SharePointServerPublishingInfrastructure.Inherit(f =>
+               {
+                   f.Enable = true;
+               }));
+           });
+
+            return model;
+        }
+
+        private ModelNode GetWebInsfrastructureModel()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddWebFeature(BuiltInWebFeatures.SharePointServerPublishing.Inherit(f =>
+                {
+                    f.Enable = true;
+                }));
+            });
+
+            return model;
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_ResetRoleInheritance_On_Publishingage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddHostPagesList(rndList =>
+                {
+                    rndList.AddRandomPublishingPage(page =>
+                    {
+                        page.OnProvisioning<object>(context =>
+                        {
+                            TurnOffValidation(page);
+                        });
+
+                        page
+                            .AddBreakRoleInheritance(GetCleanInheritance(), breakInheritance =>
+                            {
+                                breakInheritance.OnProvisioning<object>(context =>
+                                {
+                                    TurnOffValidation(breakInheritance);
+                                });
+                            })
+                            .AddResetRoleInheritance(new ResetRoleInheritanceDefinition());
+                    });
+                });
+            });
+
+            var models = new[]{
+                GetSiteInsfrastructureModel(),
+                GetWebInsfrastructureModel(),
+                model
+            };
+
+            TestModels(models);
         }
 
         [TestMethod]
@@ -317,6 +443,84 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
         }
 
         [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_BreakRoleInheritance_On_WikiPage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddHostSitePagesList(rndList =>
+                {
+                    rndList.AddRandomWikiPage(page =>
+                    {
+                        page.OnProvisioning<object>(context =>
+                        {
+                            TurnOffValidation(page);
+                        });
+
+                        page.AddBreakRoleInheritance(GetCleanInheritance());
+                    });
+                });
+
+            });
+
+            TestModel(model);
+        }
+
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_BreakRoleInheritance_On_WebPartPage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddHostSitePagesList(rndList =>
+                {
+                    rndList.AddRandomWebPartPage(page =>
+                    {
+                        page.OnProvisioning<object>(context =>
+                        {
+                            TurnOffValidation(page);
+                        });
+
+                        page.AddBreakRoleInheritance(GetCleanInheritance());
+                    });
+                });
+            });
+
+            TestModel(model);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.Pages")]
+        public void CanDeploy_BreakRoleInheritance_On_PublishingPage()
+        {
+            var model = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddHostPagesList(rndList =>
+                {
+                    rndList.AddRandomPublishingPage(page =>
+                    {
+                        page.OnProvisioning<object>(context =>
+                        {
+                            TurnOffValidation(page);
+                        });
+
+                        page.AddBreakRoleInheritance(GetCleanInheritance());
+                    });
+                });
+            });
+
+            var models = new[]{
+                GetSiteInsfrastructureModel(),
+                GetWebInsfrastructureModel(),
+                model
+            };
+
+            TestModels(models);
+        }
+
+
+        [TestMethod]
         [TestCategory("Regression.Scenarios.Security")]
         public void CanDeploy_ResetRoleInheritance_OnListItem()
         {
@@ -353,6 +557,119 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
 
         #endregion
 
+        #region break role inheritance and amount of security groups
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security")]
+        public void CanDeploy_SecurityGroupLink_AsSingleItem()
+        {
+            // CSOM - Document level permission does not work as expected #747
+            // https://github.com/SubPointSolutions/spmeta2/issues/747
+
+            // we need to ensure that we have only one security role link 
+            // there must be only one as we clear role inheritance and add only one
+
+            // the thing is all about limited CSOM API
+
+            var securityGroup = RndDef<SecurityGroupDefinition>();
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddSecurityGroup(securityGroup);
+            });
+
+            var webModel = SPMeta2Model.NewWebModel(rootWeb =>
+            {
+                rootWeb.AddRandomList(list =>
+                {
+                    // exclude from valudation, we added role linkslater
+                    list.AddBreakRoleInheritance(new BreakRoleInheritanceDefinition
+                    {
+                        CopyRoleAssignments = false,
+                        ClearSubscopes = true
+                    }, breakRoleInheritance => breakRoleInheritance.RegExcludeFromValidation());
+
+                    list.AddSecurityGroupLink(securityGroup, group =>
+                    {
+                        var roleLink = new SecurityRoleLinkDefinition
+                        {
+                            SecurityRoleType = BuiltInSecurityRoleTypes.Contributor
+                        };
+
+                        roleLink.RegMustBeSingleItem();
+
+                        group.AddSecurityRoleLink(roleLink);
+                    });
+                });
+            });
+
+            TestModel(siteModel, webModel);
+        }
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security")]
+        public void CanDeploy_SecurityGroupLink_AsSingleItem_2()
+        {
+            // CSOM - Document level permission does not work as expected #747
+            // https://github.com/SubPointSolutions/spmeta2/issues/747
+
+            // we need to ensure that we have only one security role link 
+            // there must be only one as we clear role inheritance and add only one
+
+            // the thing is all about limited CSOM API
+
+            var securityGroup = RndDef<SecurityGroupDefinition>();
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site.AddSecurityGroup(securityGroup);
+            });
+
+            var listDef = RndDef<ListDefinition>();
+
+            var webModel = SPMeta2Model.NewWebModel(rootWeb =>
+            {
+                rootWeb.AddList(listDef, list =>
+                {
+                    list.RegExcludeFromValidation();
+
+                    // exclude from valudation, we added role linkslater
+                    list.AddBreakRoleInheritance(new BreakRoleInheritanceDefinition
+                    {
+                        CopyRoleAssignments = false,
+                        ClearSubscopes = true
+                    }, breakRoleInheritance => breakRoleInheritance.RegExcludeFromValidation());
+
+
+                });
+            });
+
+
+            var webModel2 = SPMeta2Model.NewWebModel(rootWeb =>
+            {
+                rootWeb.AddList(listDef, list =>
+                {
+                    list.RegExcludeFromValidation();
+
+                    list.AddSecurityGroupLink(securityGroup, group =>
+                    {
+                        var roleLink = new SecurityRoleLinkDefinition
+                        {
+                            SecurityRoleType = BuiltInSecurityRoleTypes.Contributor
+                        };
+
+                        roleLink.RegMustBeSingleItem();
+
+                        group.AddSecurityRoleLink(roleLink);
+                    });
+                });
+            });
+
+            TestModels(new ModelNode[] { siteModel, webModel, webModel2 });
+        }
+
+        #endregion
+
         #region add security group link
 
         [TestMethod]
@@ -377,11 +694,11 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                            TurnOffValidation(rndWeb);
                        });
 
-                       rndWeb.AddSecurityGroupLink(securityGroup);
+                       AddSecurityGroupLinkWithRoleLinks(rndWeb, securityGroup);
                    });
                });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -408,12 +725,12 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                TurnOffValidation(rndList);
                            });
 
-                           rndList.AddSecurityGroupLink(securityGroup);
+                           AddSecurityGroupLinkWithRoleLinks(rndList, securityGroup);
                        });
                    });
                });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -447,13 +764,13 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                     TurnOffValidation(rndFolder);
                                 });
 
-                                rndFolder.AddSecurityGroupLink(securityGroup);
+                                AddSecurityGroupLinkWithRoleLinks(rndFolder, securityGroup);
                             });
                         });
                     });
                 });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -487,16 +804,72 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                     TurnOffValidation(rndFolder);
                                 });
 
-                                rndFolder.AddSecurityGroupLink(securityGroup);
+                                AddSecurityGroupLinkWithRoleLinks(rndFolder, securityGroup);
                             });
                         });
                     });
                 });
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
 
         }
 
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security")]
+        public void CanDeploy_SecurityGroupLink_OnModuleFile()
+        {
+            var securityGroup = ModelGeneratorService.GetRandomDefinition<SecurityGroupDefinition>();
+
+            var listDef = ModelGeneratorService.GetRandomDefinition<ListDefinition>(def =>
+            {
+                def.TemplateType = BuiltInListTemplateTypeId.DocumentLibrary;
+            });
+
+            var siteModel = SPMeta2Model
+                                .NewSiteModel(site =>
+                                {
+                                    site.AddSecurityGroup(securityGroup);
+                                });
+
+            var webModel = SPMeta2Model
+                .NewWebModel(web =>
+                {
+                    web.AddRandomWeb(rndWeb =>
+                    {
+                        rndWeb.AddList(listDef, rndList =>
+                        {
+                            rndList.AddRandomModuleFile(rndModuleFile =>
+                            {
+                                rndModuleFile.OnProvisioning<object>(context =>
+                                {
+                                    TurnOffValidation(rndModuleFile);
+                                });
+
+                                AddSecurityGroupLinkWithRoleLinks(rndModuleFile, securityGroup);
+                            });
+                        });
+                    });
+                });
+
+            TestModels(new ModelNode[] { siteModel, webModel });
+
+        }
+
+        protected void AddSecurityGroupLinkWithRoleLinks<TModelNode>(TModelNode node,
+            SecurityGroupDefinition securityGroup)
+              where TModelNode : ModelNode, ISecurableObjectHostModelNode, new()
+        {
+            // we need to ensire that role links can be aded as well
+            // SSOM provision gives WebpartPageModelHost not supported error #654
+            // https://github.com/SubPointSolutions/spmeta2/issues/654
+            node.AddSecurityGroupLink(securityGroup, group =>
+            {
+                group
+                    .AddSecurityRoleLink(BuiltInSecurityRoleNames.Edit)
+                    .AddSecurityRoleLink(BuiltInSecurityRoleNames.Design)
+                    .AddSecurityRoleLink(BuiltInSecurityRoleNames.Approve);
+            });
+        }
 
         [TestMethod]
         [TestCategory("Regression.Scenarios.Security")]
@@ -524,14 +897,14 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                      TurnOffValidation(rndListItem);
                                  });
 
-                                 rndListItem.AddSecurityGroupLink(securityGroup);
+                                 AddSecurityGroupLinkWithRoleLinks(rndListItem, securityGroup);
                              });
                          });
                      });
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
 
@@ -561,14 +934,14 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                      TurnOffValidation(page);
                                  });
 
-                                 page.AddSecurityGroupLink(securityGroup);
+                                 AddSecurityGroupLinkWithRoleLinks(page, securityGroup);
                              });
                          });
                      });
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -597,14 +970,14 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                      TurnOffValidation(page);
                                  });
 
-                                 page.AddSecurityGroupLink(securityGroup);
+                                 AddSecurityGroupLinkWithRoleLinks(page, securityGroup);
                              });
                          });
                      });
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -628,7 +1001,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                  {
                      web.AddRandomWeb(rndWeb =>
                      {
-                         rndWeb.AddSiteFeature(BuiltInWebFeatures.SharePointServerPublishing.Inherit(f =>
+                         rndWeb.AddWebFeature(BuiltInWebFeatures.SharePointServerPublishing.Inherit(f =>
                          {
                              f.Enable = true;
                          }));
@@ -642,14 +1015,49 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                                      TurnOffValidation(page);
                                  });
 
-                                 page.AddSecurityGroupLink(securityGroup);
+                                 AddSecurityGroupLinkWithRoleLinks(page, securityGroup);
                              });
                          });
                      });
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            var models = new[]{
+                GetSiteInsfrastructureModel(),
+                GetWebInsfrastructureModel(),
+                siteModel,
+                webModel
+            };
+
+            TestModels(models);
+        }
+
+        #endregion
+
+        #region role links order
+
+        [TestMethod]
+        [TestCategory("Regression.Scenarios.Security.RoleLinks.Order")]
+        public void CanDeploy_SecurityRoleLink_Under_SecurityGroup()
+        {
+            // Incorrect provision order for SecurityGroup / SecurityRole #1017
+            // https://github.com/SubPointSolutions/spmeta2/issues/1017
+
+            var securityGroupDef = ModelGeneratorService.GetRandomDefinition<SecurityGroupDefinition>();
+            var securityRoleDef = ModelGeneratorService.GetRandomDefinition<SecurityRoleDefinition>();
+
+            var siteModel = SPMeta2Model.NewSiteModel(site =>
+            {
+                site
+                    .AddSecurityRole(securityRoleDef)
+                    .AddSecurityGroup(securityGroupDef, securityGroup =>
+                    {
+                        securityGroup.AddSecurityRoleLink(securityRoleDef.Name);
+                    });
+            });
+
+
+            TestModel(siteModel);
         }
 
         #endregion
@@ -700,7 +1108,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -738,7 +1146,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -778,7 +1186,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
 
@@ -817,7 +1225,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                  });
 
 
-            TestModels(new[] { siteModel, webModel });
+            TestModels(new ModelNode[] { siteModel, webModel });
         }
 
         [TestMethod]
@@ -826,26 +1234,25 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
         {
             var securityGroup = ModelGeneratorService.GetRandomDefinition<SecurityGroupDefinition>();
 
-            var webModel = SPMeta2Model
-                 .NewWebModel(web =>
-                 {
-                     web.AddRandomWeb(rndWeb =>
-                     {
-                         rndWeb.AddRandomList(rndList =>
-                         {
-                             rndList.AddRandomListItem(rndListItem =>
-                             {
-                                 rndListItem.AddSecurityGroupLink(new SecurityGroupLinkDefinition
-                                 {
-                                     IsAssociatedMemberGroup = true
-                                 });
-                             });
-                         });
-                     });
-                 });
+            var webModel = SPMeta2Model.NewWebModel(web =>
+            {
+                web.AddRandomWeb(rndWeb =>
+                {
+                    rndWeb.AddRandomList(rndList =>
+                    {
+                        rndList.AddRandomListItem(rndListItem =>
+                        {
+                            rndListItem.AddSecurityGroupLink(new SecurityGroupLinkDefinition
+                            {
+                                IsAssociatedMemberGroup = true
+                            });
+                        });
+                    });
+                });
+            });
 
 
-            TestModels(new[] { webModel });
+            TestModels(new ModelNode[] { webModel });
         }
 
         [TestMethod]
@@ -870,7 +1277,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                      });
                  });
 
-            TestModels(new[] { webModel });
+            TestModels(new ModelNode[] { webModel });
         }
 
         [TestMethod]
@@ -895,7 +1302,7 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
                      });
                  });
 
-            TestModels(new[] { webModel });
+            TestModels(new ModelNode[] { webModel });
         }
 
         #endregion
@@ -904,8 +1311,10 @@ namespace SPMeta2.Regression.Tests.Impl.Scenarios
 
         protected void TurnOffValidation(ModelNode node)
         {
-            node.Value.RequireSelfProcessing = false;
-            node.Options.RequireSelfProcessing = false;
+            node.RegExcludeFromValidation();
+
+            //node.Value.RequireSelfProcessing = false;
+            //node.Options.RequireSelfProcessing = false;
         }
 
         protected BreakRoleInheritanceDefinition GetCleanInheritance()

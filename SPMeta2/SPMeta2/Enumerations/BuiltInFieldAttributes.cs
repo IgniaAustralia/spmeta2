@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-
+﻿// ReSharper disable InconsistentNaming
 namespace SPMeta2.Enumerations
 {
     /// <summary>
@@ -87,6 +82,8 @@ namespace SPMeta2.Enumerations
         public static string ResultType = "ResultType";
 
         public static string Format = "Format";
+
+        public static string FieldReference = "FieldRef";
 
         #endregion
     }

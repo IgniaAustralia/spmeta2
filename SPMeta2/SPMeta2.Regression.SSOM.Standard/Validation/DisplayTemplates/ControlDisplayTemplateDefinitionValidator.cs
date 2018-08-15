@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.SharePoint;
 using SPMeta2.Containers.Assertion;
 using SPMeta2.Definitions;
+using SPMeta2.Regression.SSOM.Extensions;
 using SPMeta2.Regression.SSOM.Standard.Validation.Base;
 using SPMeta2.Regression.SSOM.Validation;
 using SPMeta2.SSOM.ModelHosts;
@@ -142,9 +143,16 @@ namespace SPMeta2.Regression.SSOM.Standard.Validation.DisplayTemplates
             return item["MasterPageDescription"] as string;
         }
 
+        
+
         public static string GetManagedPropertyMapping(this SPListItem item)
         {
             return item["ManagedPropertyMapping"] as string;
+        }
+
+        public static string GetCompatibleManagedProperties(this SPListItem item)
+        {
+            return item["CompatibleManagedProperties"] as string;
         }
     }
 }

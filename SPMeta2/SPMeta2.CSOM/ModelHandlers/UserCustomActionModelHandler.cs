@@ -120,13 +120,29 @@ namespace SPMeta2.CSOM.ModelHandlers
             TraceService.Verbose((int)LogEventId.ModelProvisionCoreCall, "Updating user custom action properties.");
 
             existringAction.Sequence = customAction.Sequence;
-            existringAction.Description = customAction.Description;
             existringAction.Group = customAction.Group;
             existringAction.Location = customAction.Location;
             existringAction.Name = customAction.Name;
             existringAction.ScriptBlock = customAction.ScriptBlock;
             existringAction.ScriptSrc = customAction.ScriptSrc;
-            existringAction.Title = customAction.Title;
+
+            // fallback for old models
+            // fill out Title/Description with Name if NULLs
+            // that needs for SP2016 to work well with translation exports
+
+            // UserCustomAction without Title/Description breaks Translation Export #937
+            // https://github.com/SubPointSolutions/spmeta2/issues/937
+
+            if (!string.IsNullOrEmpty(customAction.Title))
+                existringAction.Title = customAction.Title;
+            else
+                existringAction.Title = customAction.Name;
+
+            if (!string.IsNullOrEmpty(customAction.Description))
+                existringAction.Description = customAction.Description;
+            else
+                existringAction.Description = customAction.Name;
+
             existringAction.Url = customAction.Url;
 
             if (!string.IsNullOrEmpty(customAction.CommandUIExtension))
@@ -156,6 +172,9 @@ namespace SPMeta2.CSOM.ModelHandlers
             }
 
             existringAction.Rights = permissions;
+
+
+            ProcessLocalization(existringAction, customAction);
         }
 
         protected bool IsValidHostModelHost(object modelHost)
@@ -164,6 +183,16 @@ namespace SPMeta2.CSOM.ModelHandlers
                 modelHost is SiteModelHost ||
                 modelHost is WebModelHost ||
                 modelHost is ListModelHost;
+        }
+
+        protected virtual void ProcessLocalization(UserCustomAction obj, UserCustomActionDefinition definition)
+        {
+            ProcessGenericLocalization(obj, new Dictionary<string, List<ValueForUICulture>>
+            {
+                { "TitleResource", definition.TitleResource },
+                { "DescriptionResource", definition.DescriptionResource },
+                { "CommandUIExtensionResource", definition.CommandUIExtensionResource },
+            });
         }
 
         #endregion

@@ -21,48 +21,28 @@ namespace SPMeta2.Definitions.Fields
     [DataContract]
     [ExpectArrayExtensionMethod]
 
-    public class DependentLookupFieldDefinition : DefinitionBase
+    [ExpectManyInstances]
+    public class DependentLookupFieldDefinition : LookupFieldDefinition
     {
+        #region constructors
+
+        public DependentLookupFieldDefinition() : base()
+        {
+        }
+
+        #endregion
+      
         #region properties
 
+        /// <summary>
+        /// ID of the target field.
+        /// </summary>
+        /// 
         [ExpectValidation]
         [ExpectRequired]
         [DataMember]
         [IdentityKey]
-        public string InternalName { get; set; }
-
-        /// <summary>
-        /// Title of the target field.
-        /// </summary>
-        /// 
-        [ExpectValidation]
-        [ExpectUpdate]
-        [ExpectRequired]
-        [DataMember]
-        public string Title { get; set; }
-
-        /// <summary>
-        /// Description of the target field.
-        /// </summary>
-        /// 
-        [ExpectValidation]
-        [ExpectUpdate]
-        [DataMember]
-        [ExpectNullable]
-        public string Description { get; set; }
-
-        /// <summary>
-        /// Group of the target field.
-        /// </summary>
-        /// 
-        [ExpectValidation]
-        [ExpectUpdate]
-        [DataMember]
-        public string Group { get; set; }
-
-        [ExpectValidation]
-        [DataMember]
-        public string LookupField { get; set; }
+        public override Guid Id { get; set; }
 
         [ExpectValidation]
         [DataMember]
@@ -79,6 +59,22 @@ namespace SPMeta2.Definitions.Fields
         [ExpectRequired(GroupName = "PrimaryLookup")]
         public Guid? PrimaryLookupFieldId { get; set; }
 
+        [ExpectValidation]
+        [DataMember]
+        public override string ValidationMessage
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+        [ExpectValidation]
+        [DataMember]
+        public override string ValidationFormula
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
         #endregion
 
         public override string ToString()
@@ -86,6 +82,8 @@ namespace SPMeta2.Definitions.Fields
             return new ToStringResult<DependentLookupFieldDefinition>(this, base.ToString())
                           .AddPropertyValue(p => p.Title)
                           .AddPropertyValue(p => p.InternalName)
+                          .AddPropertyValue(p => p.PrimaryLookupFieldId)
+                          .AddPropertyValue(p => p.AllowMultipleValues)
                           .ToString();
         }
     }

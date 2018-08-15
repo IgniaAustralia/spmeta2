@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 
 namespace SPMeta2.Services
 {
@@ -12,6 +9,8 @@ namespace SPMeta2.Services
 
         public object Context { get; set; }
         public string Value { get; set; }
+
+        public bool IsSiteRelativeUrl { get; set; }
 
         #endregion
     }
@@ -42,10 +41,25 @@ namespace SPMeta2.Services
 
         #endregion
 
+        #region classes
+
+        public class TokenReplacementResultEventArgs : EventArgs
+        {
+            public TokenReplacementResult Result { get; set; }
+        }
+
+        #endregion
+
+        #region events
+
+        public EventHandler<TokenReplacementResultEventArgs> OnTokenReplaced;
+
+        #endregion
+
         #region properties
 
-        protected List<TokenInfo> _supportedTokens = new List<TokenInfo>();
-        public IEnumerable<TokenInfo> SupportedTokens { get { return _supportedTokens; } }
+        protected readonly List<TokenInfo> SupportedTokensInternal = new List<TokenInfo>();
+        public IEnumerable<TokenInfo> SupportedTokens { get { return SupportedTokensInternal; } }
 
 
         #endregion

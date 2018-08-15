@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace SPMeta2.Enumerations
+﻿namespace SPMeta2.Enumerations
 {
     /// <summary>
     /// Out of the box SharePoint list template types.
@@ -70,5 +65,6 @@ namespace SPMeta2.Enumerations
         public static int HealthRules = 1220;
         public static int HealthReports = 1221;
         public static int DeveloperSiteDraftApps = 1230;
+        public static int AssetLibrary = 851;
     }
 }

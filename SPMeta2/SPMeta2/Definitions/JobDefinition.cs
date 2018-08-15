@@ -1,30 +1,42 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Runtime.Serialization;
 using SPMeta2.Attributes;
+using SPMeta2.Attributes.Capabilities;
 using SPMeta2.Attributes.Identity;
 using SPMeta2.Attributes.Regression;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using SPMeta2.Definitions.Base;
 using SPMeta2.Utils;
-using System.Runtime.Serialization;
+using System.Collections.Generic;
 
 namespace SPMeta2.Definitions
 {
+    [Serializable]
+    [DataContract]
+    public class JobDefinitionProperty
+    {
+        [DataMember]
+        public object Key { get; set; }
+
+        [DataMember]
+        public object Value { get; set; }
+    }
+
     /// <summary>
     /// Allows to define and deploy SharePoint timer job.
     /// </summary>
     /// 
-    [SPObjectTypeAttribute(SPObjectModelType.SSOM, "Microsoft.SharePoint.Administration.SPJobDefinition", "Microsoft.SharePoint")]
+    [SPObjectType(SPObjectModelType.SSOM, "Microsoft.SharePoint.Administration.SPJobDefinition", "Microsoft.SharePoint")]
 
-    [DefaultRootHostAttribute(typeof(WebApplicationDefinition))]
-    [DefaultParentHostAttribute(typeof(WebApplicationDefinition))]
+    [DefaultRootHost(typeof(WebApplicationDefinition))]
+    [DefaultParentHost(typeof(WebApplicationDefinition))]
 
-    [Serializable] 
+    [Serializable]
     [DataContract]
     [ExpectWithExtensionMethod]
+
+    [ParentHostCapability(typeof(WebApplicationDefinition))]
+
+    [ExpectManyInstances]
     public class JobDefinition : DefinitionBase
     {
         #region constructors
@@ -32,6 +44,7 @@ namespace SPMeta2.Definitions
         public JobDefinition()
         {
             ConstructorParams = new Collection<JobDefinitionCtorParams>();
+            Properties = new List<JobDefinitionProperty>();
         }
 
         #endregion
@@ -73,8 +86,14 @@ namespace SPMeta2.Definitions
         public string ScheduleString { get; set; }
 
         [DataMember]
-
         public Collection<JobDefinitionCtorParams> ConstructorParams { get; set; }
+
+        /// <summary>
+        /// Corresponds to SPJobDefinition.Properties
+        /// </summary>
+        [ExpectValidation]
+        [DataMember]
+        public List<JobDefinitionProperty> Properties { get; set; }
 
         #endregion
 
@@ -93,10 +112,13 @@ namespace SPMeta2.Definitions
     }
 
     [DataContract]
+    [Serializable]
 
     public enum JobDefinitionCtorParams
     {
+        [EnumMember]
         WebApplication,
+        [EnumMember]
         JobName
     }
 }
